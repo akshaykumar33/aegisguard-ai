@@ -26,12 +26,13 @@ export async function organizationPortalRoutes(app: FastifyInstance): Promise<vo
       [customer] = await db.select().from(customers).where(eq(customers.primaryUserId, payload.sub)).limit(1);
     }
 
-    if (!customer || !customer.organizationId) {
+    const orgId = customer?.organizationId || payload.orgId;
+    if (!orgId) {
       reply.status(403).send({ error: 'Current account does not belong to an organization' });
       return null;
     }
 
-    const [org] = await db.select().from(organizations).where(eq(organizations.id, customer.organizationId)).limit(1);
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
     if (!org) {
       reply.status(404).send({ error: 'Organization not found' });
       return null;
