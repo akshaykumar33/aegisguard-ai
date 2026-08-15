@@ -18,8 +18,12 @@ export class GeminiReviewClient {
   ) {
     this.apiKey = apiKey;
     this.primaryModel = primaryModel;
-    // Multi-tier model cascade prioritizing gemini-2.5-flash, with 3.7-flash and 3.5-flash fallback
-    this.fallbackModels = [primaryModel, 'gemini-2.5-flash', 'gemini-3.7-flash', 'gemini-3.5-flash'].filter(
+    // Cascade of published Gemini model ids, fastest first. Every entry must be a
+    // real model: the list previously contained gemini-3.7-flash and
+    // gemini-3.5-flash, which Google does not publish, so those two tiers could
+    // only ever spend a request to receive a 404.
+    // Verify against the live account with `npx tsx scripts/listGeminiModels.ts`.
+    this.fallbackModels = [primaryModel, 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'].filter(
       (v, i, a) => a.indexOf(v) === i
     );
   }
