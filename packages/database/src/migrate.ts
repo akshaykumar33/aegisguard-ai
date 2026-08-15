@@ -33,9 +33,14 @@ export async function runMigrations() {
         email VARCHAR(255) NOT NULL UNIQUE,
         name VARCHAR(255) NOT NULL,
         avatar_url TEXT,
+        password_hash TEXT,
+        is_platform_admin BOOLEAN NOT NULL DEFAULT false,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_platform_admin BOOLEAN NOT NULL DEFAULT false;
 
       CREATE TABLE IF NOT EXISTS teams (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

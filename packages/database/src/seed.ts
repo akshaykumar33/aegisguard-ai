@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { db } from './client.js';
 import { eq } from 'drizzle-orm';
 import {
@@ -27,6 +28,25 @@ import {
   documents
 } from './schema/index.js';
 import { logger } from '@codeguard/logger';
+
+/** Shared credential for every seeded demo account. Local development only. */
+const DEMO_PASSWORD = 'CodeGuard!2026';
+
+/**
+ * PBKDF2 hash in the `salt:derivedKey` form that @codeguard/auth verifyPassword
+ * expects. Duplicated rather than imported because @codeguard/auth depends on
+ * this package — importing it here would create a dependency cycle. Keep the
+ * parameters below in sync with hashPassword in packages/auth/src/index.ts.
+ */
+function hashDemoPassword(password: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const salt = crypto.randomBytes(16).toString('hex');
+    crypto.pbkdf2(password, salt, 100000, 64, 'sha512', (err, derivedKey) => {
+      if (err) return reject(err);
+      resolve(`${salt}:${derivedKey.toString('hex')}`);
+    });
+  });
+}
 
 export async function seedDatabase() {
   logger.info('🌱 Starting comprehensive database seeding for CodeGuard & Subscriber Platform...');
@@ -350,12 +370,19 @@ export async function seedDatabase() {
     }
 
     // 7. Seed Demo Users
+    //
+    // Every demo account shares DEMO_PASSWORD so /auth/login works out of the box
+    // after seeding. Only superadmin@codeguard.dev carries isPlatformAdmin.
+    const demoPasswordHash = await hashDemoPassword(DEMO_PASSWORD);
+
     let [superAdminUser] = await db
       .insert(users)
       .values({
         email: 'superadmin@codeguard.dev',
         name: 'Sarah Connor (Super Admin)',
-        avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2'
+        avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2',
+        passwordHash: demoPasswordHash,
+        isPlatformAdmin: true
       })
       .onConflictDoNothing()
       .returning();
@@ -368,7 +395,8 @@ export async function seedDatabase() {
       .values({
         email: 'student@codeguard.dev',
         name: 'Aarav Sharma (Student Dev)',
-        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'
+        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde',
+        passwordHash: demoPasswordHash
       })
       .onConflictDoNothing()
       .returning();
@@ -381,7 +409,8 @@ export async function seedDatabase() {
       .values({
         email: 'pro@codeguard.dev',
         name: 'Elena Rostova (Staff Engineer)',
-        avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956'
+        avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956',
+        passwordHash: demoPasswordHash
       })
       .onConflictDoNothing()
       .returning();
@@ -394,7 +423,8 @@ export async function seedDatabase() {
       .values({
         email: 'admin@acmepayments.com',
         name: 'Alex Rivera (Security Lead)',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb'
+        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
+        passwordHash: demoPasswordHash
       })
       .onConflictDoNothing()
       .returning();
@@ -407,7 +437,8 @@ export async function seedDatabase() {
       .values({
         email: 'dev1@acmepayments.com',
         name: 'Jordan Lee (Frontend Dev)',
-        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d'
+        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
+        passwordHash: demoPasswordHash
       })
       .onConflictDoNothing()
       .returning();
