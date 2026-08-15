@@ -3,6 +3,15 @@ import { db, users, customers, subscriptions, plans, organizations, memberships,
 import { eq, desc } from 'drizzle-orm';
 import { signJwt, verifyJwt, hashPassword, verifyPassword } from '@codeguard/auth';
 import { subscriptionService, entitlementEngine } from '@codeguard/policy-engine';
+import { config } from '@codeguard/config';
+
+type UserRow = typeof users.$inferSelect;
+
+/** Strip the credential hash before a user row crosses the API boundary. */
+function toPublicUser(user: UserRow) {
+  const { passwordHash: _passwordHash, ...publicUser } = user;
+  return publicUser;
+}
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   // 1. Register
@@ -20,6 +29,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ error: 'Email and name are required' });
     }
 
+    if (!body.password || body.password.length < 8) {
+      return reply.status(400).send({ error: 'Password is required and must be at least 8 characters' });
+    }
+
     try {
       // Check existing user
       const [existing] = await db.select().from(users).where(eq(users.email, body.email)).limit(1);
@@ -27,12 +40,13 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(409).send({ error: 'User with this email already exists' });
       }
 
-      // Create user
+      // Create user. isPlatformAdmin is never settable through self-registration.
       const [user] = await db
         .insert(users)
         .values({
           email: body.email,
-          name: body.name
+          name: body.name,
+          passwordHash: await hashPassword(body.password)
         })
         .returning();
 
@@ -92,7 +106,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
       return reply.status(201).send({
         token,
-        user,
+        user: toPublicUser(user),
         customer,
         plan: targetPlan
       });
@@ -103,20 +117,26 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   // 2. Login
   app.post('/auth/login', async (req, reply) => {
-    const { email } = req.body as { email: string; password?: string };
+    const { email, password } = req.body as { email: string; password?: string };
 
-    if (!email) {
-      return reply.status(400).send({ error: 'Email is required' });
+    if (!email || !password) {
+      return reply.status(400).send({ error: 'Email and password are required' });
     }
 
     try {
       const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-      if (!user) {
-        return reply.status(401).send({ error: 'Invalid credentials or user not found' });
+
+      // Same response whether the user is absent, has no password set (SSO-only),
+      // or supplied the wrong one — so this endpoint cannot enumerate accounts.
+      if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+        return reply.status(401).send({ error: 'Invalid credentials' });
       }
 
       const [customer] = await db.select().from(customers).where(eq(customers.primaryUserId, user.id)).limit(1);
-      const isSuperAdmin = user.email.includes('superadmin') || user.email.includes('admin@codeguard');
+      // Platform staff are marked by a column an administrator must set. This was
+      // previously derived from the email string, so registering an address
+      // containing "superadmin" was enough to become one.
+      const isSuperAdmin = user.isPlatformAdmin;
 
       const token = await signJwt({
         sub: user.id,
@@ -129,7 +149,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
       return reply.send({
         token,
-        user,
+        user: toPublicUser(user),
         customer,
         isPlatformAdmin: isSuperAdmin
       });
@@ -140,6 +160,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   // 3. Demo Quick-Login Switcher
   app.post('/auth/demo-login', async (req, reply) => {
+    // Mints a session for a fixed email with no credential, and previously granted
+    // platform-admin simply for asking with role='admin'. Never expose in production.
+    if (config.NODE_ENV === 'production') {
+      return reply.status(404).send({ error: 'Not found' });
+    }
+
     const { role } = req.body as { role: 'student' | 'pro' | 'org' | 'admin' };
 
     const emailMap: Record<string, string> = {
@@ -158,7 +184,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       }
 
       const [customer] = await db.select().from(customers).where(eq(customers.primaryUserId, user.id)).limit(1);
-      const isPlatformAdmin = role === 'admin';
+      // Read the flag off the seeded user rather than trusting the requested role.
+      const isPlatformAdmin = user.isPlatformAdmin;
 
       const token = await signJwt({
         sub: user.id,
@@ -171,7 +198,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
       return reply.send({
         token,
-        user,
+        user: toPublicUser(user),
         customer,
         role,
         isPlatformAdmin
@@ -210,7 +237,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       }
 
       return reply.send({
-        user,
+        user: toPublicUser(user),
         customer,
         entitlements,
         isPlatformAdmin: payload.isPlatformAdmin || false,
