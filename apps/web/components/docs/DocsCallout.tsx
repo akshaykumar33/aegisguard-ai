@@ -17,27 +17,27 @@ export function DocsCallout({
 }: DocsCalloutProps) {
   const styles = {
     note: {
-      border: 'border-blue-500/30 bg-blue-500/10 text-blue-300',
+      border: 'border-blue-500/20 bg-blue-500/5 text-blue-300',
       icon: <Info className="w-4 h-4 text-blue-400 shrink-0" />,
       defaultTitle: 'Note',
     },
     tip: {
-      border: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+      border: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-300',
       icon: <Lightbulb className="w-4 h-4 text-emerald-400 shrink-0" />,
       defaultTitle: 'Tip',
     },
     warning: {
-      border: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+      border: 'border-amber-500/20 bg-amber-500/5 text-amber-300',
       icon: <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />,
       defaultTitle: 'Warning',
     },
     danger: {
-      border: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+      border: 'border-rose-500/20 bg-rose-500/5 text-rose-300',
       icon: <AlertOctagon className="w-4 h-4 text-rose-400 shrink-0" />,
       defaultTitle: 'Important',
     },
     success: {
-      border: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+      border: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-300',
       icon: <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />,
       defaultTitle: 'Success',
     },

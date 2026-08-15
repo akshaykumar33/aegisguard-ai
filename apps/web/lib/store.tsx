@@ -31,33 +31,33 @@ interface AppContextType {
 const PERSONA_PROFILES: Record<DemoPersonaRole, PersonaProfile> = {
   student: {
     role: 'student',
-    name: 'Alex Rivera',
-    email: 'alex@stanford.edu',
+    name: 'Aarav Sharma',
+    email: 'student@codeguard.dev',
     planName: 'Student Developer',
     tier: 'FREE',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
   },
   pro: {
     role: 'pro',
     name: 'Elena Rostova',
-    email: 'elena@codeguard.dev',
+    email: 'pro@codeguard.dev',
     planName: 'Pro Engineer',
     tier: 'PRO',
     avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
   },
   org: {
     role: 'org',
-    name: 'Acme Payments Corp',
-    email: 'security@acmepayments.com',
+    name: 'Alex Rivera',
+    email: 'admin@acmepayments.com',
     planName: 'Enterprise Organization',
     tier: 'ENTERPRISE',
     organization: 'Acme Payments Corp',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
   },
   admin: {
     role: 'admin',
-    name: 'Sarah Vance',
-    email: 'admin@codeguard.dev',
+    name: 'Sarah Connor',
+    email: 'superadmin@codeguard.dev',
     planName: 'Platform Super Admin',
     tier: 'ENTERPRISE',
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
@@ -68,7 +68,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeName>('dark');
-  const [accent, setAccentState] = useState<AccentColor>('indigo');
+  const [accent, setAccentState] = useState<AccentColor>('steel');
   const [personaRole, setPersonaRoleState] = useState<DemoPersonaRole>('pro');
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
@@ -80,16 +80,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize theme and accent on mount
   useEffect(() => {
-    const savedTheme = (localStorage.getItem('codeguard_theme') as ThemeName) || 'dark';
-    const savedAccent = (localStorage.getItem('codeguard_accent') as AccentColor) || 'indigo';
-    const savedRole = (localStorage.getItem('codeguard_role') as DemoPersonaRole) || 'pro';
-    
+    // Validated rather than cast: a value stored before the palette was reduced
+    // would otherwise be stamped onto <html> and match no stylesheet rule.
+    const THEMES: ThemeName[] = [
+      'dark',
+      'tokyo-night',
+      'dracula',
+      'matrix',
+      'nord',
+      'github-dimmed',
+      'solarized-dark',
+      'light',
+      'latte',
+    ];
+    const ACCENTS: AccentColor[] = ['steel', 'teal', 'violet', 'emerald', 'amber', 'cyan'];
+
+    const storedTheme = localStorage.getItem('codeguard_theme') as ThemeName | null;
+    const storedAccent = localStorage.getItem('codeguard_accent') as AccentColor | null;
+    const storedRole = localStorage.getItem('codeguard_role') as DemoPersonaRole | null;
+
+    const savedTheme = storedTheme && THEMES.includes(storedTheme) ? storedTheme : 'dark';
+    const savedAccent = storedAccent && ACCENTS.includes(storedAccent) ? storedAccent : 'steel';
+    const savedRole = storedRole || 'pro';
+
     setThemeState(savedTheme);
     setAccentState(savedAccent);
     setPersonaRoleState(savedRole);
-    
+
     document.documentElement.setAttribute('data-theme', savedTheme);
     document.documentElement.setAttribute('data-accent', savedAccent);
+
+    // Ensure session token is initialized on initial page load
+    if (!apiClient.getToken()) {
+      apiClient.demoLogin(savedRole).catch(() => {
+        // Continue gracefully if network is initializing
+      });
+    }
   }, []);
 
   // Keyboard shortcut listener for ⌘K / Ctrl+K

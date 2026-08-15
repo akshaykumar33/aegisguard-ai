@@ -215,9 +215,20 @@ class ApiClient {
     return this.get<{ data: any }>(`/reviews/${id}`);
   }
 
+  rerunReview(id: string) {
+    return this.post<{ message: string; reviewId: string }>(`/reviews/${id}/rerun`);
+  }
+
   findings(params: { repositoryId?: string; pullRequestId?: string } = {}) {
     const qs = new URLSearchParams(params as Record<string, string>).toString();
     return this.get<{ data: any[] }>(`/findings${qs ? `?${qs}` : ''}`);
+  }
+
+  dismissFinding(id: string, reason: string) {
+    return this.request<{ data: any }>(`/findings/${id}/dismiss`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason })
+    });
   }
 
   repositories() {

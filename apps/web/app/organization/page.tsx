@@ -5,17 +5,25 @@ import { useApp } from '@/lib/store';
 import { apiClient } from '@/lib/client';
 import { useResource } from '@/lib/useResource';
 import { Resource } from '@/components/ui/ResourceStates';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Building2, UserPlus, Shield, Search } from 'lucide-react';
+import {
+  UserPlus,
+  Search,
+  Shield,
+  Users,
+  Settings,
+  MoreHorizontal,
+} from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export default function OrganizationPage() {
-  const { setIsInviteModalOpen } = useApp();
+  const { persona, setIsInviteModalOpen } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
-  const membersResource = useResource(() => apiClient.orgMembers());
+  const membersResource = useResource(() => apiClient.orgMembers(), [persona.role]);
 
   const filterMembers = (members: any[]) =>
     members.filter(
@@ -25,65 +33,81 @@ export default function OrganizationPage() {
         m.role?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+  const getRoleBadge = (role: string) => {
+    const variants: Record<string, 'primary' | 'warning' | 'success' | 'secondary'> = {
+      OWNER: 'primary',
+      ADMIN: 'warning',
+      SECURITY_LEAD: 'success',
+      MEMBER: 'secondary',
+    };
+    return variants[role] || 'secondary';
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-subtle pb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-heading flex items-center gap-2.5">
-            <Building2 className="w-7 h-7 text-primary" />
-            <span>Team & Seats Governance</span>
-          </h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            Manage developer seats, assign granular RBAC role permissions, and enforce global code policies across engineering teams.
-          </p>
-        </div>
-
-        <Button
-          variant="primary"
-          size="sm"
-          leftIcon={<UserPlus className="w-4 h-4" />}
-          onClick={() => setIsInviteModalOpen(true)}
-        >
-          Invite Member
-        </Button>
-      </div>
+      <PageHeader
+        title="Team & Seats"
+        description="Manage developer seats and role permissions across your organization."
+        actions={
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<UserPlus className="h-4 w-4" />}
+            onClick={() => setIsInviteModalOpen(true)}
+          >
+            Invite Member
+          </Button>
+        }
+      />
 
       {/* Seats indicator card */}
-      <Card className="p-6 bg-gradient-to-r from-card-elevated to-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="text-xs font-bold uppercase tracking-wider text-text-muted">Enterprise Seat Allocation</div>
-          <div className="text-xl font-extrabold text-foreground font-heading mt-1">
+      <Card className="p-6 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+        <div className="space-y-2 flex-1 max-w-lg">
+          <div className="flex items-center gap-2.5">
+            <Users className="w-4 h-4 text-muted-foreground" />
+            <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Seat Allocation</span>
+            <Badge variant="primary" size="sm" dot>
+              ACTIVE ENTERPRISE
+            </Badge>
+          </div>
+          <div className="text-xl font-semibold text-foreground tabular">
             {membersResource.data
               ? `${membersResource.data.members.length} / ${membersResource.data.seatLimit ?? '—'} Seats Assigned`
               : 'Seats —'}
           </div>
-          <p className="text-xs text-text-secondary mt-0.5">
+          <p className="text-[13px] text-muted-foreground leading-relaxed">
             {membersResource.data?.seatLimit
-              ? `${Math.max(0, membersResource.data.seatLimit - membersResource.data.members.length)} seats available in active subscription.`
-              : 'Seat allocation is set by your plan.'}
+              ? `${Math.max(0, membersResource.data.seatLimit - membersResource.data.members.length)} developer seats available in current billing plan.`
+              : 'Seat allocation is dynamically provisioned by your enterprise plan.'}
           </p>
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => setIsInviteModalOpen(true)}>
-          Add Extra Seats
-        </Button>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setIsInviteModalOpen(true)}>
+            Add Seats
+          </Button>
+          <Button variant="primary" size="sm" leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setIsInviteModalOpen(true)}>
+            Invite Teammate
+          </Button>
+        </div>
       </Card>
 
       {/* Members Directory */}
-      <Card className="p-6 space-y-4">
+      <Card className="p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search members or roles..."
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-input border border-border-subtle focus:border-primary text-xs text-foreground outline-none"
+              placeholder="Search members or roles…"
+              aria-label="Search members"
+              className="w-full rounded-lg border border-border bg-card py-2.5 pl-10 pr-4 text-[13px] text-foreground outline-none placeholder:text-muted-foreground hover:border-border-focus focus:border-border-focus focus:ring-1 focus:ring-ring/30 transition-all shadow-xs"
             />
           </div>
-          <span className="text-xs text-text-muted">
-            {membersResource.data ? filterMembers(membersResource.data.members).length : 0} Members
+          <span className="text-[13px] text-muted-foreground">
+            {membersResource.data ? filterMembers(membersResource.data.members).length : 0} Active Members
           </span>
         </div>
 
@@ -94,49 +118,86 @@ export default function OrganizationPage() {
           emptyTitle="No members yet"
           emptyDescription="Invite a teammate to get started."
         >
-          {(data) => (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border-subtle text-text-muted uppercase text-[10px] tracking-wider">
-                <th className="py-3 px-4">Member</th>
-                <th className="py-3 px-4">Email</th>
-                <th className="py-3 px-4">Role</th>
-                <th className="py-3 px-4">Joined</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle">
-              {filterMembers(data.members).map((member: any) => (
-                <tr key={member.id} className="hover:bg-card-hover/50 transition-colors">
-                  <td className="py-3.5 px-4 font-bold text-foreground flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-primary-light text-primary flex items-center justify-center font-bold text-[10px]">
-                      {member.name[0]}
-                    </div>
-                    <span>{member.name}</span>
-                  </td>
-                  <td className="py-3.5 px-4 font-mono text-text-secondary">{member.email}</td>
-                  <td className="py-3.5 px-4">
-                    <Badge variant={member.role === 'OWNER' ? 'primary' : member.role === 'SECURITY_LEAD' ? 'warning' : 'secondary'} size="sm">
-                      {member.role}
-                    </Badge>
-                  </td>
-                  <td className="py-3.5 px-4 text-text-muted">{formatDate(member.joinedAt)}</td>
-                  <td className="py-3.5 px-4 text-right">
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => toast.info(`Editing permissions for ${member.name}`)}
-                    >
-                      Edit Role
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-          )}
+          {(data) => {
+            const filtered = filterMembers(data.members);
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead>
+                    <tr className="border-b border-border/40">
+                      <th className="text-left py-3 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Member</th>
+                      <th className="text-left py-3 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Email</th>
+                      <th className="text-left py-3 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Role</th>
+                      <th className="text-left py-3 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Joined</th>
+                      <th className="text-right py-3 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((m: any) => (
+                      <tr key={m.id} className="border-b border-border/20 hover:bg-card-hover/50 transition-colors">
+                        {/* Member cell */}
+                        <td className="py-3.5 px-4">
+                          <span className="flex items-center gap-3">
+                            {m.avatarUrl ? (
+                              <img
+                                src={m.avatarUrl}
+                                alt={m.name}
+                                className="w-8 h-8 rounded-full object-cover ring-1 ring-border shrink-0"
+                              />
+                            ) : (
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary border border-border text-[13px] font-semibold text-foreground">
+                                {m.name?.[0]?.toUpperCase() ?? '?'}
+                              </span>
+                            )}
+                            <span className="font-medium text-foreground">{m.name || '—'}</span>
+                          </span>
+                        </td>
+                        {/* Email cell */}
+                        <td className="py-3.5 px-4">
+                          <span className="font-mono text-[12px] text-muted-foreground">{m.email || '—'}</span>
+                        </td>
+                        {/* Role cell */}
+                        <td className="py-3.5 px-4">
+                          <Badge variant={getRoleBadge(m.role)} size="sm">
+                            {m.role === 'SECURITY_LEAD' ? (
+                              <span className="flex items-center gap-1.5">
+                                <Shield className="w-3 h-3" />
+                                {m.role}
+                              </span>
+                            ) : m.role}
+                          </Badge>
+                        </td>
+                        {/* Joined cell */}
+                        <td className="py-3.5 px-4">
+                          <span className="text-muted-foreground text-[12px]">{m.joinedAt ? formatDate(m.joinedAt) : '—'}</span>
+                        </td>
+                        {/* Actions cell */}
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              leftIcon={<Settings className="w-3 h-3" />}
+                              onClick={() => toast.info(`Editing permissions for ${m.name}`)}
+                            >
+                              Edit role
+                            </Button>
+                            <button
+                              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                              onClick={() => toast.info(`More options for ${m.name}`)}
+                              title="More options"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          }}
         </Resource>
       </Card>
     </div>

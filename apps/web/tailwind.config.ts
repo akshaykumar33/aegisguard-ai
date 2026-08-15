@@ -64,23 +64,56 @@ const config: Config = {
         },
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
+        // `text-text-secondary` and `text-text-muted` appear ~70 times across the
+        // pages but this key never existed, so both resolved to nothing and every
+        // supposedly de-emphasised label rendered at full foreground contrast.
+        text: {
+          secondary: 'hsl(var(--text-secondary))',
+          muted: 'hsl(var(--text-muted))',
+        },
       },
       fontFamily: {
         sans: ['var(--font-geist-sans)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
         mono: ['var(--font-geist-mono)', 'JetBrains Mono', 'Menlo', 'monospace'],
+        // `font-heading` is used on ~23 headings and was likewise undefined.
+        heading: ['var(--font-geist-sans)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
-        xl: 'calc(var(--radius) + 4px)',
-        '2xl': 'calc(var(--radius) + 8px)',
+        md: 'calc(var(--radius) - 2px)',
+        lg: 'var(--radius)',
+        xl: 'calc(var(--radius) + 2px)',
+        '2xl': 'calc(var(--radius) + 4px)',
       },
       boxShadow: {
-        subtle: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-        card: '0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 1px 2px -1px rgba(0, 0, 0, 0.2)',
-        glow: '0 0 20px -2px hsl(var(--primary) / 0.35)',
-        'glow-accent': '0 0 20px -2px hsl(var(--accent) / 0.35)',
+        xs: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+        sm: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        card: '0 1px 2px 0 rgb(0 0 0 / 0.12)',
+        'card-hover': '0 4px 12px -2px rgb(0 0 0 / 0.2)',
+      },
+      animation: {
+        fadeIn: 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both',
+        scaleIn: 'scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both',
+        slideUp: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both',
+        pulseGlow: 'pulseGlow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          from: { opacity: '0', transform: 'translateY(6px)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        scaleIn: {
+          from: { opacity: '0', transform: 'scale(0.96)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        slideUp: {
+          from: { opacity: '0', transform: 'translateY(12px)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        pulseGlow: {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.6', transform: 'scale(1.05)' },
+        },
       },
     },
   },

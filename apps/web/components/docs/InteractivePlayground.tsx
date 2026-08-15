@@ -122,12 +122,12 @@ export function InteractivePlayground() {
           </h3>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 mt-2 sm:mt-0">
           {PRESET_SNIPPETS.map((preset) => (
             <button
               key={preset.name}
               onClick={() => setCode(preset.code)}
-              className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 transition-colors"
+              className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 transition-colors whitespace-nowrap"
             >
               {preset.name}
             </button>

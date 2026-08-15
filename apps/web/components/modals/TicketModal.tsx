@@ -43,7 +43,7 @@ export function TicketModal() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+          <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 font-mono">
             Subject *
           </label>
           <input
@@ -52,19 +52,19 @@ export function TicketModal() {
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="e.g. Guidance on fine-tuning AST rules for microservices"
-            className="w-full px-4 py-2 rounded-xl bg-input border border-border-subtle focus:border-primary text-xs text-foreground outline-none transition-colors"
+            className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-border-focus focus:ring-1 focus:ring-border-focus text-xs text-foreground outline-none transition-colors shadow-xs"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+            <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 font-mono">
               Category
             </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-4 py-2 rounded-xl bg-input border border-border-subtle focus:border-primary text-xs text-foreground outline-none transition-colors"
+              className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-border-focus focus:ring-1 focus:ring-border-focus text-xs text-foreground outline-none transition-colors shadow-xs"
             >
               <option value="Technical Support">Technical & AST Parsing</option>
               <option value="Security Scanner">Secret Scanner & Vulnerabilities</option>
@@ -74,13 +74,13 @@ export function TicketModal() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+            <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 font-mono">
               Priority
             </label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as any)}
-              className="w-full px-4 py-2 rounded-xl bg-input border border-border-subtle focus:border-primary text-xs text-foreground outline-none transition-colors"
+              className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-border-focus focus:ring-1 focus:ring-border-focus text-xs text-foreground outline-none transition-colors shadow-xs"
             >
               <option value="LOW">Low (General Inquiry)</option>
               <option value="MEDIUM">Medium (Standard Support)</option>
@@ -91,7 +91,7 @@ export function TicketModal() {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+          <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 font-mono">
             Detailed Explanation *
           </label>
           <textarea
@@ -100,11 +100,11 @@ export function TicketModal() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Describe the issue, include repository name, PR links, or reproduction steps..."
-            className="w-full px-4 py-2.5 rounded-xl bg-input border border-border-subtle focus:border-primary text-xs text-foreground outline-none transition-colors resize-none"
+            className="w-full px-3 py-2.5 rounded-lg bg-input border border-border focus:border-border-focus focus:ring-1 focus:ring-border-focus text-xs text-foreground outline-none transition-colors resize-none shadow-xs"
           />
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border-subtle mt-6">
+        <div className="flex items-center justify-end gap-2 pt-4 border-t border-border mt-6">
           <Button variant="ghost" size="sm" type="button" onClick={() => setIsTicketModalOpen(false)}>
             Cancel
           </Button>

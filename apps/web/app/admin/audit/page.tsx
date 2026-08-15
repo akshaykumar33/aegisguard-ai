@@ -1,53 +1,50 @@
 'use client';
 
 import React from 'react';
+import { useApp } from '@/lib/store';
 import { apiClient } from '@/lib/client';
 import { useResource } from '@/lib/useResource';
 import { Resource } from '@/components/ui/ResourceStates';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { DataTable } from '@/components/ui/DataTable';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { History, Shield, Download } from 'lucide-react';
+import { Download, Shield } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 import { toast } from 'sonner';
 
+import { IconBadge } from '@/components/ui/IconBadge';
+
 export default function AdminAuditPage() {
-  const logs = useResource(() => apiClient.adminAuditLogs());
+  const { persona } = useApp();
+  const logs = useResource(() => apiClient.adminAuditLogs(), [persona.role]);
 
   const handleExport = () => {
     toast.success('Immutable audit logs exported in signed JSON format.');
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-subtle pb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-heading flex items-center gap-2.5">
-            <History className="w-7 h-7 text-accent" />
-            <span>Immutable Security Audit Trail</span>
-          </h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            Cryptographically signed audit trail recording all Break-Glass overrides, role modifications, and policy changes.
-          </p>
-        </div>
+    <div className="space-y-5 animate-fadeIn">
+      <PageHeader
+        title="Audit trail & compliance"
+        description="Signed record of break-glass overrides, role changes, and policy edits."
+        actions={
+          <Button variant="outline" size="sm" leftIcon={<Download className="h-3.5 w-3.5" />} onClick={handleExport}>
+            Export Signed JSON
+          </Button>
+        }
+      />
 
-        <Button
-          variant="outline"
-          size="sm"
-          leftIcon={<Download className="w-4 h-4" />}
-          onClick={handleExport}
-        >
-          Export Signed Audit Logs
-        </Button>
-      </div>
-
-      <Card className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
+      <Card className="p-5 space-y-4">
+        <div className="flex items-center justify-between pb-1">
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-base font-bold text-foreground font-heading">Security Events Log</h3>
+            <IconBadge color="slate" size="xs">
+              <Shield />
+            </IconBadge>
+            <h2 className="text-sm font-semibold text-foreground">Cryptographic Security Events</h2>
           </div>
-          <span className="text-xs text-text-muted">
+          <span className="font-mono text-xs text-muted-foreground">
             {logs.data?.auditLogs.length ?? 0} Events Recorded
           </span>
         </div>
@@ -60,38 +57,47 @@ export default function AdminAuditPage() {
           emptyDescription="Platform activity will be recorded here as it happens."
         >
           {(data) => (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border-subtle text-text-muted uppercase text-[10px] tracking-wider">
-                <th className="py-3 px-4">Timestamp</th>
-                <th className="py-3 px-4">Actor</th>
-                <th className="py-3 px-4">Action</th>
-                <th className="py-3 px-4">Target Resource</th>
-                <th className="py-3 px-4">Details / Metadata</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle">
-              {data.auditLogs.map((log: any) => (
-                <tr key={log.id} className="hover:bg-card-hover/50 transition-colors">
-                  <td className="py-3.5 px-4 font-mono text-text-muted">{formatDateTime(log.createdAt)}</td>
-                  <td className="py-3.5 px-4">
-                    <Badge variant={log.actorType === 'ADMIN' ? 'danger' : 'primary'} size="sm">
-                      {log.actorType}
-                    </Badge>
-                  </td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-foreground">{log.action}</td>
-                  <td className="py-3.5 px-4 font-mono text-text-secondary">{log.resourceType}</td>
-                  <td className="py-3.5 px-4 font-mono text-[11px] text-text-muted">
-                    <code className="bg-black/30 px-2 py-1 rounded border border-white/5 truncate max-w-xs block">
-                      {JSON.stringify(log.metadata || {})}
-                    </code>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          caption="Security audit events"
+          rows={data.auditLogs}
+          rowKey={(log: any) => log.id}
+          columns={[
+            {
+              header: 'Action',
+              primary: true,
+              cell: (log: any) => <span className="font-mono text-xs font-medium text-foreground">{log.action}</span>,
+            },
+            {
+              header: 'Timestamp',
+              cell: (log: any) => (
+                <span className="whitespace-nowrap font-mono text-[11px] text-muted-foreground">
+                  {formatDateTime(log.createdAt)}
+                </span>
+              ),
+            },
+            {
+              header: 'Actor',
+              cell: (log: any) => (
+                <Badge variant={log.actorType === 'ADMIN' ? 'danger' : 'primary'} size="sm" dot>
+                  {log.actorType}
+                </Badge>
+              ),
+            },
+            {
+              header: 'Resource',
+              cell: (log: any) => <span className="font-mono text-[12px] text-text-secondary">{log.resourceType}</span>,
+            },
+            {
+              header: 'Metadata',
+              hideOnCard: true,
+              cell: (log: any) => (
+                <code className="block max-w-[22rem] truncate rounded-sm border border-border-subtle bg-muted px-1.5 py-0.5 font-mono text-[11px] text-text-muted">
+                  {JSON.stringify(log.metadata || {})}
+                </code>
+              ),
+            },
+          ]}
+        />
           )}
         </Resource>
       </Card>

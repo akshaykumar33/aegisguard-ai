@@ -1,5 +1,15 @@
-export type ThemeName = 'dark' | 'stripe' | 'amoled' | 'purple' | 'emerald';
-export type AccentColor = 'indigo' | 'cyan' | 'emerald' | 'violet' | 'rose' | 'amber';
+export type ThemeName =
+  | 'dark'           // Obsidian Cyber (Dark)
+  | 'tokyo-night'    // Tokyo Night (Dark)
+  | 'dracula'        // Dracula Vampire (Dark)
+  | 'matrix'         // Monokai Matrix (Dark)
+  | 'nord'           // Nord Arctic (Dark)
+  | 'github-dimmed'  // GitHub Dimmed (Dark)
+  | 'solarized-dark' // Solarized Dark (Dark)
+  | 'light'          // Vercel / Apple Pure Light (Light)
+  | 'latte';         // Catppuccin Latte (Warm Light)
+
+export type AccentColor = 'steel' | 'teal' | 'violet' | 'emerald' | 'amber' | 'cyan';
 export type DemoPersonaRole = 'student' | 'pro' | 'org' | 'admin';
 
 export interface PersonaProfile {

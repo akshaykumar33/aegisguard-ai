@@ -29,12 +29,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Sidebar />
 
             {/* Main Content Area */}
-            <div className="flex flex-1 flex-col min-w-0">
+            <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
               {/* Vercel-Style Sticky Navbar */}
               <Navbar />
 
               {/* Page Body */}
-              <main className="flex-1 p-6 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
+              <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6 min-w-0">
                 {children}
               </main>
             </div>

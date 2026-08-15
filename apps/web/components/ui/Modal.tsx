@@ -63,13 +63,13 @@ export function Modal({
             onClick={onClose}
           />
 
-          <motion.div
+            <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 4 }}
             transition={{ type: 'spring', damping: 28, stiffness: 400 }}
             className={cn(
-              'relative w-full rounded-xl border border-border bg-card-elevated p-6 shadow-2xl z-10 my-8',
+              'relative w-full max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-card-elevated p-4 sm:p-6 shadow-2xl z-10 my-4 sm:my-8',
               maxWidths[maxWidth]
             )}
             onClick={(e) => e.stopPropagation()}

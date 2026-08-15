@@ -17,7 +17,7 @@ export function PersonaSwitcher() {
   ];
 
   return (
-    <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border border-border/70">
+    <div className="flex items-center bg-card p-0.5 rounded-lg border border-border w-full sm:w-auto overflow-x-auto shadow-xs">
       {personas.map((p) => {
         const isActive = persona.role === p.id;
         return (
@@ -25,13 +25,13 @@ export function PersonaSwitcher() {
             key={p.id}
             onClick={() => setPersonaRole(p.id)}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all select-none',
+              'flex flex-1 sm:flex-initial items-center justify-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-medium transition-all select-none whitespace-nowrap cursor-pointer',
               isActive
-                ? 'bg-card text-foreground shadow-sm font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-secondary text-foreground border border-border shadow-xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent'
             )}
           >
-            <span>{p.icon}</span>
+            <span className={isActive ? 'text-foreground' : 'text-muted-foreground'}>{p.icon}</span>
             <span>{p.label}</span>
           </button>
         );

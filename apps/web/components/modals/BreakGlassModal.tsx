@@ -47,7 +47,7 @@ export function BreakGlassModal() {
       maxWidth="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs leading-relaxed flex items-start gap-2.5">
+        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs leading-relaxed flex items-start gap-2.5">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <div>
             <strong>High-Risk Action:</strong> Break-Glass overrides bypass all automated AST gates and secret scanners.
@@ -57,38 +57,38 @@ export function BreakGlassModal() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 font-mono">
               Target Repository
             </label>
             <input
               type="text"
               value={repository}
               onChange={(e) => setRepository(e.target.value)}
-              className="w-full px-4 py-2 rounded-xl bg-input border border-border-subtle focus:border-destructive text-xs text-foreground outline-none font-mono"
+              className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-border-focus focus:ring-1 focus:ring-border-focus text-xs text-foreground outline-none font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 font-mono">
               Target Branch
             </label>
             <input
               type="text"
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
-              className="w-full px-4 py-2 rounded-xl bg-input border border-border-subtle focus:border-destructive text-xs text-foreground outline-none font-mono"
+              className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-border-focus focus:ring-1 focus:ring-border-focus text-xs text-foreground outline-none font-mono"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 font-mono">
             Bypass Duration
           </label>
           <select
             value={durationMinutes}
             onChange={(e) => setDurationMinutes(Number(e.target.value))}
-            className="w-full px-4 py-2 rounded-xl bg-input border border-border-subtle focus:border-destructive text-xs text-foreground outline-none font-mono"
+            className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-border-focus focus:ring-1 focus:ring-border-focus text-xs text-foreground outline-none font-mono"
           >
             <option value={15}>15 Minutes (Fast Hotfix)</option>
             <option value={30}>30 Minutes (Recommended)</option>
@@ -98,7 +98,7 @@ export function BreakGlassModal() {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 font-mono">
             Mandatory Incident Justification *
           </label>
           <textarea
@@ -107,15 +107,15 @@ export function BreakGlassModal() {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="e.g. Production outage INC-9024: Payment gateway webhook timeout failover patch required immediately."
-            className="w-full px-4 py-2.5 rounded-xl bg-input border border-border-subtle focus:border-destructive text-xs text-foreground outline-none resize-none font-sans"
+            className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-border-focus focus:ring-1 focus:ring-border-focus text-xs text-foreground outline-none resize-none font-sans"
           />
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-border-subtle mt-6">
-          <div className="text-[11px] text-text-muted">
+        <div className="flex items-center justify-between pt-4 border-t border-border mt-6">
+          <div className="text-[11px] text-muted-foreground">
             Requester: <span className="font-mono text-foreground">{persona.email}</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" type="button" onClick={() => setIsBreakGlassModalOpen(false)}>
               Abort
             </Button>
