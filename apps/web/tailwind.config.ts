@@ -73,10 +73,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-geist-sans)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        mono: ['var(--font-geist-mono)', 'JetBrains Mono', 'Menlo', 'monospace'],
-        // `font-heading` is used on ~23 headings and was likewise undefined.
-        heading: ['var(--font-geist-sans)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['var(--font-inter)', 'var(--font-geist-sans)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['var(--font-mono)', 'var(--font-geist-mono)', 'JetBrains Mono', 'Menlo', 'monospace'],
+        heading: ['var(--font-inter)', 'var(--font-geist-sans)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       borderRadius: {
         sm: 'calc(var(--radius) - 4px)',

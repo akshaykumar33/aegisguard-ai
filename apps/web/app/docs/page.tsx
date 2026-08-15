@@ -67,28 +67,28 @@ export default function DocsPage() {
   return (
     <div className="space-y-6">
       {/* 1. TOP DOCS HERO / SEARCH BANNER */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-xs">
+      <div className="rounded-2xl border border-border bg-card p-8 sm:p-10 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex items-center gap-2">
+          <div className="space-y-3 max-w-3xl">
+            <div className="flex items-center gap-2.5">
               <Badge variant="primary" size="sm" dot>
                 DOCUMENTATION & PACKAGES
               </Badge>
               <span className="text-xs text-muted-foreground">•</span>
               <span className="text-xs text-muted-foreground font-mono">v1.4.0 (Fastify + Gemini 3.7)</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground font-heading flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground flex items-center gap-3">
               <IconBadge color="slate" size="sm">
                 <BookOpen />
               </IconBadge>
               <span>CodeGuard AI Developer Hub</span>
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            <p className="text-[14px] text-muted-foreground leading-relaxed">
               Explore comprehensive guides, package APIs, zero-trust AST scanning workflows, and integration recipes modeled after Socket.io, Sequelize, and Mintlify.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <a
               href="http://localhost:3000/docs"
               target="_blank"
@@ -109,46 +109,46 @@ export default function DocsPage() {
       </div>
 
       {/* 2. THREE-COLUMN DOCS LAYOUT */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT COLUMN: Sticky Navigation Sidebar */}
-        <div className="lg:col-span-3 rounded-xl border border-border bg-card p-4 space-y-4 lg:sticky lg:top-20 shadow-xs">
+        <div className="lg:col-span-3 rounded-2xl border border-border bg-card p-5 space-y-5 lg:sticky lg:top-20 shadow-xs">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search docs & APIs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-input border border-border focus:border-border-focus focus:ring-1 focus:ring-border-focus text-xs text-foreground outline-none transition-colors shadow-xs"
+              className="w-full pl-9 pr-3.5 py-2.5 rounded-lg bg-card border border-border focus:border-border-focus focus:ring-1 focus:ring-ring/30 text-[13px] text-foreground outline-none transition-colors shadow-xs"
             />
           </div>
 
           <div className="space-y-4 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
             {filteredSections.map((section) => (
-              <div key={section.id} className="space-y-1">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1 flex items-center justify-between font-mono">
+              <div key={section.id} className="space-y-1.5">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1 flex items-center justify-between font-mono">
                   <span>{section.title}</span>
-                  <span className="text-[9px] font-mono text-muted-foreground/70 bg-muted px-1.5 py-0.2 rounded">
+                  <span className="text-[10px] font-mono text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded">
                     {section.items.length}
                   </span>
                 </div>
 
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   {section.items.map((item) => {
                     const isSelected = selectedItemId === item.id;
                     return (
                       <button
                         key={item.id}
                         onClick={() => selectDoc(section.id, item.id)}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors cursor-pointer text-left ${
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] transition-colors cursor-pointer text-left ${
                           isSelected
-                            ? 'bg-muted text-foreground font-medium shadow-xs'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            ? 'bg-secondary text-foreground font-semibold shadow-xs border border-border/80'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                         }`}
                       >
                         <span className="truncate">{item.title}</span>
                         {item.badge && (
-                          <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground border border-border">
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border font-medium">
                             {item.badge}
                           </span>
                         )}
@@ -162,14 +162,14 @@ export default function DocsPage() {
         </div>
 
         {/* MIDDLE / MAIN COLUMN: Active Document Content */}
-        <div className="lg:col-span-9 space-y-6">
-          <div className="rounded-xl border border-border bg-card p-6 space-y-6 shadow-xs">
+        <div className="lg:col-span-9 space-y-8">
+          <div className="rounded-2xl border border-border bg-card p-8 space-y-7 shadow-xs">
           {/* Breadcrumb Header */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground border-b border-border/60 pb-3 font-mono">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground border-b border-border/60 pb-4 font-mono">
             <span>Docs</span>
-            <ChevronRight className="w-3 h-3 opacity-60" />
+            <ChevronRight className="w-3.5 h-3.5 opacity-60" />
             <span>{activeSection.title}</span>
-            <ChevronRight className="w-3 h-3 opacity-60" />
+            <ChevronRight className="w-3.5 h-3.5 opacity-60" />
             <span className="text-foreground font-semibold">{activeItem.title}</span>
           </div>
 

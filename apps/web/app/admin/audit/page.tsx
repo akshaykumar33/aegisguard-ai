@@ -14,8 +14,6 @@ import { Download, Shield } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 import { toast } from 'sonner';
 
-import { IconBadge } from '@/components/ui/IconBadge';
-
 export default function AdminAuditPage() {
   const { persona } = useApp();
   const logs = useResource(() => apiClient.adminAuditLogs(), [persona.role]);
@@ -25,24 +23,22 @@ export default function AdminAuditPage() {
   };
 
   return (
-    <div className="space-y-5 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn">
       <PageHeader
-        title="Audit trail & compliance"
-        description="Signed record of break-glass overrides, role changes, and policy edits."
+        title="Audit Trail & Compliance"
+        description="Signed record of break-glass overrides, role changes, and security policy modifications."
         actions={
-          <Button variant="outline" size="sm" leftIcon={<Download className="h-3.5 w-3.5" />} onClick={handleExport}>
+          <Button variant="outline" size="sm" leftIcon={<Download className="h-4 w-4" />} onClick={handleExport}>
             Export Signed JSON
           </Button>
         }
       />
 
-      <Card className="p-5 space-y-4">
-        <div className="flex items-center justify-between pb-1">
-          <div className="flex items-center gap-2">
-            <IconBadge color="slate" size="xs">
-              <Shield />
-            </IconBadge>
-            <h2 className="text-sm font-semibold text-foreground">Cryptographic Security Events</h2>
+      <Card className="p-7 space-y-6">
+        <div className="flex items-center justify-between pb-2 border-b border-border/40">
+          <div className="flex items-center gap-2.5">
+            <Shield className="w-4 h-4 text-primary" />
+            <h2 className="text-base font-semibold text-foreground tracking-tight">Cryptographic Security Events</h2>
           </div>
           <span className="font-mono text-xs text-muted-foreground">
             {logs.data?.auditLogs.length ?? 0} Events Recorded
@@ -57,47 +53,47 @@ export default function AdminAuditPage() {
           emptyDescription="Platform activity will be recorded here as it happens."
         >
           {(data) => (
-        <DataTable
-          caption="Security audit events"
-          rows={data.auditLogs}
-          rowKey={(log: any) => log.id}
-          columns={[
-            {
-              header: 'Action',
-              primary: true,
-              cell: (log: any) => <span className="font-mono text-xs font-medium text-foreground">{log.action}</span>,
-            },
-            {
-              header: 'Timestamp',
-              cell: (log: any) => (
-                <span className="whitespace-nowrap font-mono text-[11px] text-muted-foreground">
-                  {formatDateTime(log.createdAt)}
-                </span>
-              ),
-            },
-            {
-              header: 'Actor',
-              cell: (log: any) => (
-                <Badge variant={log.actorType === 'ADMIN' ? 'danger' : 'primary'} size="sm" dot>
-                  {log.actorType}
-                </Badge>
-              ),
-            },
-            {
-              header: 'Resource',
-              cell: (log: any) => <span className="font-mono text-[12px] text-text-secondary">{log.resourceType}</span>,
-            },
-            {
-              header: 'Metadata',
-              hideOnCard: true,
-              cell: (log: any) => (
-                <code className="block max-w-[22rem] truncate rounded-sm border border-border-subtle bg-muted px-1.5 py-0.5 font-mono text-[11px] text-text-muted">
-                  {JSON.stringify(log.metadata || {})}
-                </code>
-              ),
-            },
-          ]}
-        />
+            <DataTable
+              caption="Security audit events"
+              rows={data.auditLogs}
+              rowKey={(log: any) => log.id}
+              columns={[
+                {
+                  header: 'Action',
+                  primary: true,
+                  cell: (log: any) => <span className="font-mono text-xs font-semibold text-foreground">{log.action}</span>,
+                },
+                {
+                  header: 'Timestamp',
+                  cell: (log: any) => (
+                    <span className="whitespace-nowrap font-mono text-[12px] text-muted-foreground">
+                      {formatDateTime(log.createdAt)}
+                    </span>
+                  ),
+                },
+                {
+                  header: 'Actor',
+                  cell: (log: any) => (
+                    <Badge variant={log.actorType === 'ADMIN' ? 'danger' : 'primary'} size="sm" dot>
+                      {log.actorType}
+                    </Badge>
+                  ),
+                },
+                {
+                  header: 'Resource',
+                  cell: (log: any) => <span className="font-mono text-[12px] text-muted-foreground">{log.resourceType}</span>,
+                },
+                {
+                  header: 'Metadata',
+                  hideOnCard: true,
+                  cell: (log: any) => (
+                    <code className="block max-w-[24rem] truncate rounded-md border border-border bg-muted/60 px-2.5 py-1 font-mono text-[11px] text-foreground/80">
+                      {JSON.stringify(log.metadata || {})}
+                    </code>
+                  ),
+                },
+              ]}
+            />
           )}
         </Resource>
       </Card>

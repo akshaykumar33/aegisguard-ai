@@ -9,9 +9,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Plus, MessageSquare } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-import { IconBadge } from '@/components/ui/IconBadge';
 
 export default function SupportPage() {
   const { persona, setIsTicketModalOpen } = useApp();
@@ -34,7 +33,7 @@ export default function SupportPage() {
         }
       />
 
-      <Card className="p-6 space-y-5">
+      <Card className="p-7 space-y-6">
         <Resource
           state={ticketsResource}
           loadingLabel="Loading tickets…"
@@ -44,48 +43,48 @@ export default function SupportPage() {
         >
           {(data) => (
             <>
-              <div className="flex items-center justify-between pb-1">
-                <h2 className="text-[15px] font-semibold text-foreground">Your Active Tickets</h2>
-                <span className="font-mono text-[12px] text-muted-foreground">{data.tickets.length} Tickets</span>
+              <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                <h2 className="text-base font-semibold text-foreground tracking-tight">Your Active Tickets</h2>
+                <span className="font-mono text-xs text-muted-foreground">{data.tickets.length} Active Tickets</span>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-[13px]">
                   <thead>
-                    <tr className="border-b border-border/40">
-                      <th className="text-left py-3 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Subject</th>
-                      <th className="text-left py-3 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Ticket ID</th>
-                      <th className="text-left py-3 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Category</th>
-                      <th className="text-left py-3 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Priority</th>
-                      <th className="text-left py-3 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Status</th>
-                      <th className="text-right py-3 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Created</th>
+                    <tr className="border-b border-border/50">
+                      <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground font-mono">Subject</th>
+                      <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground font-mono">Ticket ID</th>
+                      <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground font-mono">Category</th>
+                      <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground font-mono">Priority</th>
+                      <th className="text-left py-3.5 px-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground font-mono">Status</th>
+                      <th className="text-right py-3.5 px-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground font-mono">Created</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.tickets.map((t: any) => (
                       <tr key={t.id} className="border-b border-border/20 hover:bg-card-hover/50 transition-colors">
-                        <td className="py-3.5 px-4 font-medium text-foreground">
+                        <td className="py-4 px-4 font-semibold text-foreground text-[14px]">
                           {t.subject}
                         </td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-mono text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded-md border border-border">
+                        <td className="py-4 px-4">
+                          <span className="font-mono text-[11px] text-muted-foreground bg-muted/80 px-2.5 py-1 rounded-md border border-border">
                             {t.ticketNumber ?? t.id}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-muted-foreground">
+                        <td className="py-4 px-4 text-muted-foreground text-[13px]">
                           {t.category}
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-4 px-4">
                           <Badge variant={t.priority === 'HIGH' || t.priority === 'URGENT' ? 'warning' : 'secondary'} size="sm" dot>
                             {t.priority}
                           </Badge>
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-4 px-4">
                           <Badge variant={t.status === 'RESOLVED' || t.status === 'CLOSED' ? 'success' : 'primary'} size="sm" dot>
                             {t.status}
                           </Badge>
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono text-[12px] text-muted-foreground">
+                        <td className="py-4 px-4 text-right font-mono text-[12px] text-muted-foreground">
                           {formatDate(t.createdAt)}
                         </td>
                       </tr>

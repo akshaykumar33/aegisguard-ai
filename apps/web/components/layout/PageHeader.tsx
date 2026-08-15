@@ -27,9 +27,9 @@ export function PageHeader({ title, description, actions, className }: PageHeade
       )}
     >
       <div className="flex min-w-0 flex-col gap-1.5">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{title}</h1>
         {description && (
-          <p className="max-w-[68ch] text-[13px] leading-relaxed text-muted-foreground">{description}</p>
+          <p className="max-w-[75ch] text-[14px] leading-relaxed text-muted-foreground">{description}</p>
         )}
       </div>
 

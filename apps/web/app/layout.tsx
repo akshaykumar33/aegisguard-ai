@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import { AppProvider } from '@/lib/store';
@@ -13,6 +14,18 @@ import { TicketModal } from '@/components/modals/TicketModal';
 import { BreakGlassModal } from '@/components/modals/BreakGlassModal';
 import { Toaster } from 'sonner';
 
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'CodeGuard AI • Enterprise Code Review & Governance Platform',
   description:
@@ -21,8 +34,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="dark" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
-      <body className="font-sans antialiased bg-background text-foreground selection:bg-primary/25 selection:text-primary">
+    <html
+      lang="en"
+      data-theme="dark"
+      className={`${inter.variable} ${jetbrainsMono.variable} ${GeistSans.variable} ${GeistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="font-sans antialiased bg-background text-foreground selection:bg-primary/25 selection:text-primary min-h-screen">
         <AppProvider>
           <div className="flex min-h-screen bg-background text-foreground">
             {/* Minimalist Linear Sidebar */}
@@ -33,8 +51,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {/* Vercel-Style Sticky Navbar */}
               <Navbar />
 
-              {/* Page Body */}
-              <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6 min-w-0">
+              {/* Page Body with generous padding and breathing room */}
+              <main className="flex-1 px-5 sm:px-8 lg:px-12 py-8 lg:py-10 max-w-[1400px] w-full mx-auto min-w-0">
                 {children}
               </main>
             </div>

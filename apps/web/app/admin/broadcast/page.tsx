@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Radio, Send } from 'lucide-react';
 import { toast } from 'sonner';
-
 import { IconBadge } from '@/components/ui/IconBadge';
 import { Select } from '@/components/ui/Select';
 
@@ -36,23 +35,25 @@ export default function AdminBroadcastPage() {
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground font-heading flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 border-b border-border/40 pb-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
             <IconBadge color="slate" size="sm">
               <Radio />
             </IconBadge>
-            <span>Multi-Channel Broadcaster</span>
-          </h1>
-          <p className="mt-1 text-xs text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Multi-Channel Broadcaster
+            </h1>
+          </div>
+          <p className="text-[14px] text-muted-foreground leading-relaxed max-w-2xl">
             Target announcements, policy change alerts, and security maintenance notices to specific subscriber cohorts.
           </p>
         </div>
       </div>
 
       <div className="max-w-2xl">
-        <Card className="p-6">
-          <form onSubmit={handleSend} className="space-y-4">
+        <Card className="p-7 space-y-6">
+          <form onSubmit={handleSend} className="space-y-5">
             <Select
               label="Target Audience Cohort"
               value={audience}
@@ -65,58 +66,60 @@ export default function AdminBroadcastPage() {
               ]}
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-foreground tracking-tight">
-                  Announcement Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Gemini 3.7 Flash AI Reviewer engine update"
-                  className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-border-focus focus:ring-1 focus:ring-border-focus text-xs text-foreground outline-none transition-colors shadow-xs"
-                />
-              </div>
-
-              <Select
-                label="Priority Level"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                options={[
-                  { value: 'NORMAL', label: 'Normal (Informational In-App)' },
-                  { value: 'HIGH', label: 'High Priority (In-App + Email Digest)' },
-                  { value: 'CRITICAL', label: 'Critical Alert (Immediate Push Notification)' },
-                ]}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold text-muted-foreground tracking-widest uppercase font-mono">
+                Announcement Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Gemini 3.7 Flash AI Reviewer engine update"
+                className="w-full px-4 py-2.5 rounded-lg bg-card border border-border focus:border-border-focus focus:ring-1 focus:ring-ring/30 text-[13px] text-foreground outline-none transition-colors shadow-xs"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-foreground tracking-tight">
-                Broadcast Message *
+              <label className="block text-[11px] font-semibold text-muted-foreground tracking-widest uppercase font-mono">
+                Priority Level
+              </label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg bg-card border border-border focus:border-border-focus focus:ring-1 focus:ring-ring/30 text-[13px] text-foreground outline-none transition-colors shadow-xs"
+              >
+                <option value="LOW">Low (Informational Banner)</option>
+                <option value="NORMAL">Normal (In-App Feed)</option>
+                <option value="HIGH">High (Urgent In-App Notification)</option>
+                <option value="CRITICAL">Critical (Email + Immediate Interrupt)</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold text-muted-foreground tracking-widest uppercase font-mono">
+                Announcement Message *
               </label>
               <textarea
                 required
-                rows={4}
+                rows={5}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Write your announcement or release notes here..."
-                className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-border-focus focus:ring-1 focus:ring-border-focus text-xs text-foreground outline-none transition-colors shadow-xs resize-none"
+                placeholder="Compose announcement body or Markdown formatting..."
+                className="w-full p-4 rounded-lg bg-card border border-border focus:border-border-focus focus:ring-1 focus:ring-ring/30 text-[13px] text-foreground outline-none transition-colors shadow-xs resize-y"
               />
             </div>
 
-            <div className="pt-2 flex justify-end">
-              <Button
-                variant="primary"
-                size="md"
-                isLoading={isLoading}
-                leftIcon={<Send className="w-4 h-4" />}
-                type="submit"
-              >
-                Dispatch Broadcast
-              </Button>
-            </div>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              leftIcon={<Send className="w-4 h-4" />}
+              isLoading={isLoading}
+              className="w-full"
+            >
+              {isLoading ? 'Broadcasting…' : 'Dispatch Multi-Channel Broadcast'}
+            </Button>
           </form>
         </Card>
       </div>

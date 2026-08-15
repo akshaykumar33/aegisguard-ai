@@ -18,13 +18,12 @@ import {
   FileCode,
   Sparkles,
   GitBranch,
-  Flame,
   Layers,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ReviewsPage() {
-  const { persona, setIsBreakGlassModalOpen } = useApp();
+  const { persona } = useApp();
   const [selectedRepoId, setSelectedRepoId] = useState<string>('');
   const [selectedBranch, setSelectedBranch] = useState('feature/idempotent-charges');
   const [isRunningReview, setIsRunningReview] = useState(false);
@@ -99,55 +98,43 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
 +  const expectedHmac = crypto.createHmac('sha256', process.env.GITHUB_WEBHOOK_SECRET || '')
 +    .update(payload)
 +    .digest('hex');
-+  
-+  // Cryptographic constant-time equality check to prevent timing attacks
-+  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from('sha256=' + expectedHmac));
++  const signatureBuffer = Buffer.from(signature, 'utf8');
++  const expectedBuffer = Buffer.from(\`sha256=\${expectedHmac}\`, 'utf8');
++  return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
 }`;
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      {/* Header */}
+      {/* 1. Header with Repository Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 pb-6 border-b border-border/40">
         <div className="space-y-1.5">
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground flex items-center gap-3">
-            <IconBadge color="slate" size="sm">
+            <IconBadge color="primary" size="sm">
               <GitPullRequest />
             </IconBadge>
             <span>PR Review & Security Scanner</span>
           </h1>
-          <p className="text-[13px] text-muted-foreground leading-relaxed max-w-xl">
-            Continuous zero-trust AST parsing, Google Gemini 3.7 PR verification, and automated branch protection gates.
+          <p className="text-[13px] text-muted-foreground leading-relaxed">
+            Multi-stage zero-trust AST code review, secret entropy scanner, and Google Gemini 3.7 verification.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <Button
-            variant="danger"
-            size="sm"
-            leftIcon={<Flame className="w-3.5 h-3.5" />}
-            onClick={() => setIsBreakGlassModalOpen(true)}
-          >
-            Emergency Break-Glass
-          </Button>
+        <div className="flex items-center gap-3 shrink-0">
           <Button
             variant="primary"
             size="sm"
-            isLoading={isRunningReview}
             leftIcon={<Play className="w-3.5 h-3.5" />}
             onClick={handleTriggerReview}
+            isLoading={isRunningReview}
           >
-            Run Review Now
+            {isRunningReview ? 'Running Scanner…' : 'Trigger PR Review'}
           </Button>
         </div>
       </div>
 
-      {/* Configuration Card */}
-      <Card className="p-6 space-y-5">
-        <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          Live Review Target Configuration
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {/* Target Config Card */}
+      <Card className="p-7 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Select
             label="Repository Target"
             value={selectedRepoId}
@@ -160,11 +147,11 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
           />
 
           <div className="space-y-2">
-            <label className="block text-[11px] font-medium text-muted-foreground tracking-wide uppercase">
+            <label className="block text-[11px] font-semibold text-muted-foreground tracking-widest uppercase">
               Source Branch / PR
             </label>
             <div className="relative flex items-center">
-              <GitBranch className="w-3.5 h-3.5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <GitBranch className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={selectedBranch}
@@ -176,12 +163,12 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
           </div>
 
           <div className="space-y-2">
-            <label className="block text-[11px] font-medium text-muted-foreground tracking-wide uppercase">
+            <label className="block text-[11px] font-semibold text-muted-foreground tracking-widest uppercase">
               AI Verification Engine
             </label>
-            <div className="flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-card border border-border text-[13px] text-foreground">
+            <div className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-card border border-border text-[13px] text-foreground">
               <span className="flex items-center gap-2 font-medium">
-                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                <Sparkles className="w-4 h-4 text-primary" />
                 Google Gemini 3.7 Flash
               </span>
               <Badge variant="success" size="sm" dot>Active</Badge>
@@ -191,10 +178,10 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
       </Card>
 
       {/* 4-Stage Verification Pipeline Card */}
-      <Card className="p-6 space-y-4">
+      <Card className="p-7 space-y-5">
         <div className="flex items-center justify-between">
           <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-            <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+            <Layers className="w-3.5 h-3.5" />
             <span>4-Stage Verification Pipeline</span>
           </div>
           <Badge variant="success" size="sm" dot>
@@ -202,27 +189,27 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
           </Badge>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: '1. CodeGraph AST', detail: '14 files • 84 symbols' },
             { label: '2. Secret Scanner', detail: '0 leaks • 1,842 tokens' },
             { label: '3. Gemini 3.7 AI', detail: 'Verdict: APPROVED' },
             { label: '4. Policy Gates', detail: '3/3 branch rules' },
           ].map((stage) => (
-            <div key={stage.label} className="p-4 rounded-lg bg-muted/40 border border-border space-y-2">
+            <div key={stage.label} className="p-5 rounded-xl bg-card border border-border space-y-2.5 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[13px] font-medium text-foreground">{stage.label}</span>
+                <span className="text-[14px] font-semibold text-foreground">{stage.label}</span>
                 <CheckCircle2 className="w-4 h-4 text-success" />
               </div>
-              <p className="text-[11px] text-muted-foreground font-mono">{stage.detail}</p>
+              <p className="text-[12px] text-muted-foreground font-mono">{stage.detail}</p>
             </div>
           ))}
         </div>
       </Card>
 
       {/* Tabs & Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-0">
-        <div className="flex items-center gap-0.5 overflow-x-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-0">
+        <div className="flex items-center gap-1 overflow-x-auto">
           {(['findings', 'diff', 'graph'] as const).map((tab) => {
             const labels = {
               findings: `Findings (${findingsList.length})`,
@@ -266,7 +253,7 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
 
       {/* Tab Contents */}
       {activeTab === 'findings' && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <Resource
             state={findingsResource}
             loadingLabel="Loading security findings…"
@@ -275,9 +262,9 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
             emptyDescription="All scanned code passed zero-trust policies, secret entropy tests, and AI verification."
           >
             {() => (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {filteredFindings.map((fnd: any) => (
-                  <Card key={fnd.id} className="p-6 space-y-4">
+                  <Card key={fnd.id} className="p-7 space-y-5">
                     {/* Finding header */}
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
@@ -288,7 +275,7 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
                         >
                           {fnd.severity}
                         </Badge>
-                        <h3 className="text-[14px] font-semibold text-foreground leading-snug">{fnd.title}</h3>
+                        <h3 className="text-[15px] font-semibold text-foreground leading-snug">{fnd.title}</h3>
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -314,8 +301,8 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
 
                     {/* Code evidence snippet */}
                     {(fnd.evidence || fnd.codeSnippet) && (
-                      <div className="rounded-lg overflow-hidden border border-border bg-background">
-                        <div className="px-4 py-2 border-b border-border/40 flex items-center justify-between text-[12px] bg-muted/40">
+                      <div className="rounded-xl overflow-hidden border border-border bg-background">
+                        <div className="px-4 py-2.5 border-b border-border/40 flex items-center justify-between text-[12px] bg-muted/40">
                           <span className="flex items-center gap-2 text-foreground/80 font-mono">
                             <FileCode className="w-3.5 h-3.5 text-muted-foreground" />
                             {fnd.filePath || fnd.file}:{fnd.startLine || fnd.lineStart}
@@ -332,12 +319,12 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
 
                     {/* Suggested fix */}
                     {(fnd.recommendation || fnd.suggestedFix) && (
-                      <div className="p-4 rounded-lg bg-success-light border border-success/20 space-y-1.5">
+                      <div className="p-5 rounded-xl bg-success-light border border-success/20 space-y-2">
                         <div className="font-medium flex items-center gap-2 text-[12px] text-success">
                           <CheckCircle2 className="w-4 h-4" />
                           <span>Suggested Fix (Gemini 3.7 Verified)</span>
                         </div>
-                        <div className="text-[13px] text-foreground/90 leading-relaxed font-mono pl-6">
+                        <div className="text-[13px] text-foreground leading-relaxed font-mono pl-6">
                           {fnd.recommendation || fnd.suggestedFix}
                         </div>
                       </div>
@@ -351,7 +338,7 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
       )}
 
       {activeTab === 'diff' && (
-        <Card className="p-6 space-y-4">
+        <Card className="p-7 space-y-5">
           <div className="flex items-center justify-between text-[13px]">
             <span className="font-medium text-foreground flex items-center gap-2">
               <FileCode className="w-4 h-4 text-muted-foreground" />
@@ -364,16 +351,16 @@ export async function verifyIncomingWebhook(signature: string, payload: Buffer):
       )}
 
       {activeTab === 'graph' && (
-        <Card className="p-6 space-y-4">
+        <Card className="p-7 space-y-5">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <h3 className="text-[14px] font-semibold text-foreground">Symbol Dependency Impact Tree</h3>
+              <h3 className="text-[15px] font-semibold text-foreground">Symbol Dependency Impact Tree</h3>
               <p className="text-[12px] text-muted-foreground">AST CodeGraph trace across changed symbols.</p>
             </div>
             <Badge variant="success" size="sm">0 Cycles Detected</Badge>
           </div>
 
-          <div className="p-5 rounded-lg bg-background border border-border font-mono text-[13px] text-foreground space-y-2.5">
+          <div className="p-6 rounded-xl bg-background border border-border font-mono text-[13px] text-foreground space-y-3">
             <div className="text-foreground font-semibold flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-success inline-block" />
               verifyIncomingWebhook (packages/auth/src/token.ts)

@@ -21,14 +21,16 @@ codeguard scan --staged`;
     <div className="space-y-8 animate-fadeIn">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 pb-6 border-b border-border/40">
-        <div className="space-y-1.5">
-          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground flex items-center gap-3">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
             <IconBadge color="slate" size="sm">
               <TerminalIcon />
             </IconBadge>
-            <span>Developer CLI & Interactive Terminal</span>
-          </h1>
-          <p className="text-[13px] text-muted-foreground leading-relaxed max-w-2xl">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Developer CLI & Interactive Terminal
+            </h1>
+          </div>
+          <p className="text-[14px] text-muted-foreground leading-relaxed max-w-3xl">
             Execute local zero-trust scans, simulate Gemini 3.7 PR reviews, and inspect raw AST CodeGraph payloads directly from the web or command line.
           </p>
         </div>
@@ -38,42 +40,54 @@ codeguard scan --staged`;
       <Terminal />
 
       {/* Local Installation & Integration Guide */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6 space-y-4">
-          <div className="flex items-center gap-2.5">
-            <Download className="w-5 h-5 text-muted-foreground" />
-            <h3 className="text-[15px] font-semibold text-foreground">Local CLI Quickstart</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="p-7 space-y-5">
+          <div className="flex items-center gap-3 pb-3 border-b border-border/40">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+              <Download className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground tracking-tight">Local CLI Quickstart</h3>
+              <p className="text-xs text-muted-foreground">Command line integration for CI/CD and pre-commit hooks</p>
+            </div>
           </div>
-          <p className="text-[13px] text-muted-foreground leading-relaxed">
+
+          <p className="text-[13.5px] text-muted-foreground leading-relaxed">
             Install the CodeGuard CLI to enforce git pre-commit hooks, block secret leaks before they leave your laptop, and automate local pull request verification.
           </p>
           <CodeBlock code={installSnippet} language="bash" filename="Terminal" showLineNumbers={false} />
         </Card>
 
-        <Card className="p-6 space-y-4">
-          <div className="flex items-center gap-2.5">
-            <Cpu className="w-5 h-5 text-muted-foreground" />
-            <h3 className="text-[15px] font-semibold text-foreground">Architecture Highlights</h3>
+        <Card className="p-7 space-y-5">
+          <div className="flex items-center gap-3 pb-3 border-b border-border/40">
+            <div className="p-2 rounded-xl bg-secondary text-foreground border border-border">
+              <Cpu className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-foreground tracking-tight">Architecture Highlights</h3>
+              <p className="text-xs text-muted-foreground">Multi-stage pipeline intelligence and verification engines</p>
+            </div>
           </div>
-          <div className="space-y-3">
-            <div className="p-4 rounded-lg bg-muted/40 border border-border flex items-start gap-3">
+
+          <div className="space-y-3.5">
+            <div className="p-4 rounded-xl bg-muted/30 border border-border/80 flex items-start gap-3.5">
               <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
               <div className="text-[13px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground font-medium">Google Gemini 3.7 Flash:</strong> Sub-second automated code reviews with semantic diff reasoning.
+                <strong className="text-foreground font-semibold">Google Gemini 3.7 Flash:</strong> Sub-second automated code reviews with semantic diff reasoning and AST patch generation.
               </div>
             </div>
 
-            <div className="p-4 rounded-lg bg-muted/40 border border-border flex items-start gap-3">
+            <div className="p-4 rounded-xl bg-muted/30 border border-border/80 flex items-start gap-3.5">
               <Shield className="w-4 h-4 text-success shrink-0 mt-0.5" />
               <div className="text-[13px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground font-medium">Zero-Trust Secret Scanner:</strong> SHA-256 entropy inspection preventing token and private key leakage.
+                <strong className="text-foreground font-semibold">Zero-Trust Secret Scanner:</strong> Shannon entropy inspection preventing token and private key leakage across all git commits.
               </div>
             </div>
 
-            <div className="p-4 rounded-lg bg-muted/40 border border-border flex items-start gap-3">
+            <div className="p-4 rounded-xl bg-muted/30 border border-border/80 flex items-start gap-3.5">
               <TerminalIcon className="w-4 h-4 text-accent shrink-0 mt-0.5" />
               <div className="text-[13px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground font-medium">CodeGraph AST Engine:</strong> Cross-file symbol dependency tracking and cyclic graph validation.
+                <strong className="text-foreground font-semibold">CodeGraph AST Engine:</strong> Cross-file symbol dependency tracking and cyclic graph validation.
               </div>
             </div>
           </div>

@@ -560,9 +560,37 @@ table,
   font-variant-numeric: tabular-nums;
 }
 
-/* Headings should not leave a single word stranded on the last line. */
-h1, h2, h3 {
+/* Headings and typography scales */
+h1, h2, h3, h4, h5, h6 {
   text-wrap: balance;
+}
+
+h1 {
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  font-weight: 700;
+}
+
+h2 {
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+h3 {
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+h4, h5, h6 {
+  letter-spacing: -0.015em;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+p {
+  line-height: 1.65;
 }
 
 /* Every interactive element gets a visible keyboard state. */
