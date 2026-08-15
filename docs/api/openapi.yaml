@@ -1,0 +1,107 @@
+openapi: 3.1.0
+info:
+  title: CodeGuard Enterprise API
+  description: Multi-tenant DevSecOps & AI Code Review Control Plane API
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local Development Server
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                  services:
+                    type: object
+  /organizations:
+    get:
+      summary: List organizations for authenticated user
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of organizations
+    post:
+      summary: Create an organization
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug]
+              properties:
+                name: { type: string }
+                slug: { type: string }
+      responses:
+        '201':
+          description: Organization created
+  /repositories:
+    get:
+      summary: List repositories for organization
+      parameters:
+        - name: organizationId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Repositories list
+  /pull-requests:
+    get:
+      summary: List pull requests
+      parameters:
+        - name: repositoryId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Pull requests list
+  /reviews/{reviewId}:
+    get:
+      summary: Get review run details, stages, and findings
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Review run details
+  /policies:
+    get:
+      summary: List policies
+      parameters:
+        - name: organizationId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Policies list
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
