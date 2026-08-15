@@ -1,0 +1,29 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
+  },
+  "include": [],
+  "references": [
+    { "path": "./packages/types" },
+    { "path": "./packages/config" },
+    { "path": "./packages/logger" },
+    { "path": "./packages/database" },
+    { "path": "./packages/auth" },
+    { "path": "./packages/github" },
+    { "path": "./packages/code-graph" },
+    { "path": "./packages/policy-engine" },
+    { "path": "./packages/queue" },
+    { "path": "./packages/security-scanner" },
+    { "path": "./packages/code-parser" },
+    { "path": "./packages/retrieval" },
+    { "path": "./packages/ai-reviewer" },
+    { "path": "./packages/ai-verifier" },
+    { "path": "./packages/cli" },
+    { "path": "./apps/api" },
+    { "path": "./apps/webhook-worker" },
+    { "path": "./apps/review-worker" },
+    { "path": "./scripts" }
+  ]
+}
