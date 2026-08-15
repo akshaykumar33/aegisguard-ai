@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { db } from './client.js';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import {
   organizations,
   users,
@@ -388,11 +388,11 @@ export async function seedDatabase() {
         passwordHash: demoPasswordHash,
         isPlatformAdmin: true
       })
-      .onConflictDoNothing()
+      .onConflictDoUpdate({
+        target: users.email,
+        set: { isPlatformAdmin: true, name: 'Sarah Connor (Super Admin)' }
+      })
       .returning();
-    if (!superAdminUser) {
-      [superAdminUser] = await db.select().from(users).where(eq(users.email, 'superadmin@codeguard.dev')).limit(1);
-    }
 
     let [studentUser] = await db
       .insert(users)
@@ -402,11 +402,11 @@ export async function seedDatabase() {
         avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde',
         passwordHash: demoPasswordHash
       })
-      .onConflictDoNothing()
+      .onConflictDoUpdate({
+        target: users.email,
+        set: { name: 'Aarav Sharma (Student Dev)', avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde' }
+      })
       .returning();
-    if (!studentUser) {
-      [studentUser] = await db.select().from(users).where(eq(users.email, 'student@codeguard.dev')).limit(1);
-    }
 
     let [proUser] = await db
       .insert(users)
@@ -416,11 +416,11 @@ export async function seedDatabase() {
         avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956',
         passwordHash: demoPasswordHash
       })
-      .onConflictDoNothing()
+      .onConflictDoUpdate({
+        target: users.email,
+        set: { name: 'Elena Rostova (Staff Engineer)', avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956' }
+      })
       .returning();
-    if (!proUser) {
-      [proUser] = await db.select().from(users).where(eq(users.email, 'pro@codeguard.dev')).limit(1);
-    }
 
     let [orgOwnerUser] = await db
       .insert(users)
@@ -430,11 +430,11 @@ export async function seedDatabase() {
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
         passwordHash: demoPasswordHash
       })
-      .onConflictDoNothing()
+      .onConflictDoUpdate({
+        target: users.email,
+        set: { name: 'Alex Rivera (Security Lead)', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb' }
+      })
       .returning();
-    if (!orgOwnerUser) {
-      [orgOwnerUser] = await db.select().from(users).where(eq(users.email, 'admin@acmepayments.com')).limit(1);
-    }
 
     let [orgMemberUser] = await db
       .insert(users)
@@ -464,44 +464,55 @@ export async function seedDatabase() {
       [demoOrg] = await db.select().from(organizations).where(eq(organizations.slug, 'acme-corp')).limit(1);
     }
 
-    if (demoOrg && orgOwnerUser) {
-      await db.insert(memberships).values({
-        organizationId: demoOrg.id,
-        userId: orgOwnerUser.id,
-        role: 'OWNER'
-      }).onConflictDoNothing();
-    }
+    // Seed distinct team members
+    const teamSeeds = [
+      { name: 'Alex Rivera', email: 'admin@acmepayments.com', role: 'OWNER', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Elena Rostova', email: 'pro@codeguard.dev', role: 'SECURITY_LEAD', avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Marcus Vance', email: 'marcus.vance@acmepayments.com', role: 'ADMIN', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Sarah Chen', email: 'sarah.chen@acmepayments.com', role: 'ADMIN', avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Priya Patel', email: 'priya.patel@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80' },
+      { name: 'David Kim', email: 'david.kim@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Jordan Lee', email: 'dev1@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Rachel Adams', email: 'rachel.adams@acmepayments.com', role: 'SECURITY_LEAD', avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Tomas Novak', email: 'tomas.novak@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Amina Bello', email: 'amina.bello@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Carlos Mendez', email: 'carlos.mendez@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Emily Zhang', email: 'emily.zhang@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Liam O\'Connor', email: 'liam.oconnor@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Sofia Rossi', email: 'sofia.rossi@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Aarav Sharma', email: 'student@codeguard.dev', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Vikram Seth', email: 'superadmin@codeguard.dev', role: 'ADMIN', avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80' }
+    ];
 
-    if (demoOrg && proUser) {
-      await db.insert(memberships).values({
-        organizationId: demoOrg.id,
-        userId: proUser.id,
-        role: 'SECURITY_LEAD'
-      }).onConflictDoNothing();
-    }
+    if (demoOrg) {
+      for (const t of teamSeeds) {
+        let [u] = await db.select().from(users).where(eq(users.email, t.email)).limit(1);
+        if (!u) {
+          [u] = await db.insert(users).values({
+            email: t.email,
+            passwordHash: await hashDemoPassword(DEMO_PASSWORD),
+            name: t.name,
+            avatarUrl: t.avatarUrl,
+            isPlatformAdmin: t.email === 'superadmin@codeguard.dev'
+          }).returning();
+        }
 
-    if (demoOrg && studentUser) {
-      await db.insert(memberships).values({
-        organizationId: demoOrg.id,
-        userId: studentUser.id,
-        role: 'MEMBER'
-      }).onConflictDoNothing();
-    }
+        if (u) {
+          const [m] = await db
+            .select()
+            .from(memberships)
+            .where(and(eq(memberships.organizationId, demoOrg.id), eq(memberships.userId, u.id)))
+            .limit(1);
 
-    if (demoOrg && orgMemberUser) {
-      await db.insert(memberships).values({
-        organizationId: demoOrg.id,
-        userId: orgMemberUser.id,
-        role: 'MEMBER'
-      }).onConflictDoNothing();
-    }
-
-    if (demoOrg && superAdminUser) {
-      await db.insert(memberships).values({
-        organizationId: demoOrg.id,
-        userId: superAdminUser.id,
-        role: 'ADMIN'
-      }).onConflictDoNothing();
+          if (!m) {
+            await db.insert(memberships).values({
+              organizationId: demoOrg.id,
+              userId: u.id,
+              role: t.role as any
+            });
+          }
+        }
+      }
     }
 
     // 9. Seed Demo Customers (Student, Pro, Org)
@@ -946,58 +957,62 @@ export async function seedDatabase() {
       }
 
       // Repositories
-      const [paymentsRepo] = await db
-        .insert(repositories)
-        .values({
-          organizationId: demoOrg.id,
-          provider: 'github',
-          providerRepoId: '87654321',
-          name: 'payments-service',
-          fullName: 'acme/payments-service',
-          private: true,
-          defaultBranch: 'main',
-          cloneUrl: 'https://github.com/acme-corp/payments-service.git',
-          installationId: '12345678'
-        })
-        .onConflictDoNothing()
-        .returning();
+      const repoSeeds = [
+        { name: 'payments-service', fullName: 'acme/payments-service', defaultBranch: 'main' },
+        { name: 'auth-gateway', fullName: 'acme/auth-gateway', defaultBranch: 'main' },
+        { name: 'customer-portal', fullName: 'acme/customer-portal', defaultBranch: 'main' },
+        { name: 'notification-worker', fullName: 'acme/notification-worker', defaultBranch: 'main' },
+        { name: 'billing-engine', fullName: 'acme/billing-engine', defaultBranch: 'main' },
+        { name: 'sast-analyzer', fullName: 'acme/sast-analyzer', defaultBranch: 'main' },
+        { name: 'ast-parser', fullName: 'acme/ast-parser', defaultBranch: 'main' },
+        { name: 'gemini-agent', fullName: 'acme/gemini-agent', defaultBranch: 'main' },
+        { name: 'api-gateway', fullName: 'acme/api-gateway', defaultBranch: 'main' },
+        { name: 'risk-engine', fullName: 'acme/risk-engine', defaultBranch: 'main' },
+        { name: 'compliance-service', fullName: 'acme/compliance-service', defaultBranch: 'main' },
+        { name: 'event-stream', fullName: 'acme/event-stream', defaultBranch: 'main' },
+        { name: 'session-manager', fullName: 'acme/session-manager', defaultBranch: 'main' },
+        { name: 'metrics-collector', fullName: 'acme/metrics-collector', defaultBranch: 'main' },
+        { name: 'policy-enforcer', fullName: 'acme/policy-enforcer', defaultBranch: 'main' },
+        { name: 'secret-vault', fullName: 'acme/secret-vault', defaultBranch: 'main' },
+        { name: 'cache-proxy', fullName: 'acme/cache-proxy', defaultBranch: 'main' },
+        { name: 'audit-dispatcher', fullName: 'acme/audit-dispatcher', defaultBranch: 'main' },
+        { name: 'search-indexer', fullName: 'acme/search-indexer', defaultBranch: 'main' },
+        { name: 'edge-router', fullName: 'acme/edge-router', defaultBranch: 'main' },
+        { name: 'webhook-delivery', fullName: 'acme/webhook-delivery', defaultBranch: 'main' },
+        { name: 'rate-limiter', fullName: 'acme/rate-limiter', defaultBranch: 'main' },
+        { name: 'user-directory', fullName: 'acme/user-directory', defaultBranch: 'main' },
+        { name: 'pricing-calculator', fullName: 'acme/pricing-calculator', defaultBranch: 'main' },
+        { name: 'invoice-renderer', fullName: 'acme/invoice-renderer', defaultBranch: 'main' }
+      ];
 
-      let activeRepo = paymentsRepo;
-      if (!activeRepo) {
-        [activeRepo] = await db.select().from(repositories).where(eq(repositories.name, 'payments-service')).limit(1);
+      for (let i = 0; i < repoSeeds.length; i++) {
+        const r = repoSeeds[i];
+        const [existing] = await db
+          .select()
+          .from(repositories)
+          .where(and(eq(repositories.organizationId, demoOrg.id), eq(repositories.fullName, r.fullName)))
+          .limit(1);
+
+        if (!existing) {
+          await db.insert(repositories).values({
+            organizationId: demoOrg.id,
+            provider: 'github',
+            providerRepoId: `876543${10 + i}`,
+            name: r.name,
+            fullName: r.fullName,
+            private: true,
+            defaultBranch: r.defaultBranch,
+            cloneUrl: `https://github.com/acme-corp/${r.name}.git`,
+            installationId: '12345678'
+          });
+        }
       }
 
-      const [authGatewayRepo] = await db
-        .insert(repositories)
-        .values({
-          organizationId: demoOrg.id,
-          provider: 'github',
-          providerRepoId: '87654322',
-          name: 'auth-gateway',
-          fullName: 'acme/auth-gateway',
-          private: true,
-          defaultBranch: 'main',
-          cloneUrl: 'https://github.com/acme-corp/auth-gateway.git',
-          installationId: '12345678'
-        })
-        .onConflictDoNothing()
-        .returning();
-
-      const [portalRepo] = await db
-        .insert(repositories)
-        .values({
-          organizationId: demoOrg.id,
-          provider: 'github',
-          providerRepoId: '87654323',
-          name: 'customer-portal',
-          fullName: 'acme/customer-portal',
-          private: true,
-          defaultBranch: 'main',
-          cloneUrl: 'https://github.com/acme-corp/customer-portal.git',
-          installationId: '12345678'
-        })
-        .onConflictDoNothing()
-        .returning();
+      let [activeRepo] = await db
+        .select()
+        .from(repositories)
+        .where(and(eq(repositories.organizationId, demoOrg.id), eq(repositories.name, 'payments-service')))
+        .limit(1);
 
       if (activeRepo) {
         const [secPolicy] = await db

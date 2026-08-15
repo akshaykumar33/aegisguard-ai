@@ -293,6 +293,14 @@ export async function runMigrations() {
         ip_address VARCHAR(45),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_id VARCHAR(255);
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_type VARCHAR(50) DEFAULT 'USER';
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS action VARCHAR(100);
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS resource_type VARCHAR(100);
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS resource_id VARCHAR(255);
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB;
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45);
     `);
 
     // 8. Subscriber Management & Customer Portal Platform
