@@ -377,6 +377,9 @@ importers:
 
   packages/code-graph:
     dependencies:
+      '@codeguard/code-parser':
+        specifier: workspace:*
+        version: link:../code-parser
       '@codeguard/logger':
         specifier: workspace:*
         version: link:../logger

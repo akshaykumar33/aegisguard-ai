@@ -1,34 +1,53 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CodeGraphStore, GraphNode } from './index.js';
+import {
+  CodeGraphStore,
+  GraphLinker,
+  IncrementalGraphIndexer,
+  BlastRadiusAnalyzer,
+  SmartContextCompactor,
+  type GraphNode
+} from './index.js';
 
 describe('Code Graph Engine & Intelligence Store', () => {
   let graph: CodeGraphStore;
 
   const controllerNode: GraphNode = {
-    id: 'sym-1',
+    id: 'src/controllers/paymentController.ts#handlePaymentWebhook:10',
     name: 'handlePaymentWebhook',
     kind: 'FUNCTION',
     filePath: 'src/controllers/paymentController.ts',
     startLine: 10,
-    endLine: 45
+    endLine: 45,
+    signature: 'async function handlePaymentWebhook(req: Request, res: Response)'
   };
 
   const serviceNode: GraphNode = {
-    id: 'sym-2',
+    id: 'src/services/paymentService.ts#processPaymentTransaction:20',
     name: 'processPaymentTransaction',
     kind: 'METHOD',
     filePath: 'src/services/paymentService.ts',
     startLine: 20,
-    endLine: 80
+    endLine: 80,
+    signature: 'public async processPaymentTransaction(amount: number, currency: string)'
   };
 
   const repoNode: GraphNode = {
-    id: 'sym-3',
+    id: 'src/db/repositories/transactionRepo.ts#saveTransactionRecord:15',
     name: 'saveTransactionRecord',
     kind: 'METHOD',
     filePath: 'src/db/repositories/transactionRepo.ts',
     startLine: 15,
-    endLine: 50
+    endLine: 50,
+    signature: 'public async saveTransactionRecord(record: TransactionRecord)'
+  };
+
+  const testNode: GraphNode = {
+    id: 'src/controllers/paymentController.test.ts#testWebhookHandling:5',
+    name: 'testWebhookHandling',
+    kind: 'FUNCTION',
+    filePath: 'src/controllers/paymentController.test.ts',
+    startLine: 5,
+    endLine: 35
   };
 
   beforeEach(() => {
@@ -36,6 +55,7 @@ describe('Code Graph Engine & Intelligence Store', () => {
     graph.addNode(controllerNode);
     graph.addNode(serviceNode);
     graph.addNode(repoNode);
+    graph.addNode(testNode);
 
     // Controller -> Service -> Repo
     graph.addEdge({
@@ -49,54 +69,97 @@ describe('Code Graph Engine & Intelligence Store', () => {
       targetId: repoNode.id,
       relationType: 'CALLS'
     });
+
+    // Test -> Controller
+    graph.addEdge({
+      sourceId: testNode.id,
+      targetId: controllerNode.id,
+      relationType: 'CALLS'
+    });
   });
 
   it('should store and query nodes correctly', () => {
-    expect(graph.getNode('sym-1')).toEqual(controllerNode);
+    expect(graph.getNode(controllerNode.id)).toEqual(controllerNode);
     const found = graph.findNodesByName('processPaymentTransaction');
     expect(found.length).toBe(1);
-    expect(found[0].id).toBe('sym-2');
+    expect(found[0].id).toBe(serviceNode.id);
   });
 
   it('should traverse callers and callees accurately', () => {
-    // Callers of service
-    const callers = graph.findCallers('sym-2');
+    // Callers of service (Controller)
+    const callers = graph.findCallers(serviceNode.id);
     expect(callers.length).toBe(1);
-    expect(callers[0].caller.id).toBe('sym-1');
+    expect(callers[0].caller.id).toBe(controllerNode.id);
 
-    // Callees of service
-    const callees = graph.findCallees('sym-2');
+    // Callees of service (Repo)
+    const callees = graph.findCallees(serviceNode.id);
     expect(callees.length).toBe(1);
-    expect(callees[0].callee.id).toBe('sym-3');
+    expect(callees[0].callee.id).toBe(repoNode.id);
   });
 
-  it('should extract multi-hop neighborhood graph for changed symbols', () => {
-    const neighborhood = graph.extractNeighborhood(['sym-1'], 2);
-    expect(neighborhood.nodes.length).toBe(3);
-    expect(neighborhood.edges.length).toBe(2);
+  it('should calculate degree centrality correctly', () => {
+    // Service has 1 incoming (caller) * 2 + 1 outgoing = 3
+    const centrality = graph.calculateCentrality(serviceNode.id);
+    expect(centrality).toBe(3);
   });
 
-  it('should detect direct architectural layer violations', () => {
-    const badController: GraphNode = {
-      id: 'sym-bad-ctrl',
-      name: 'directDbAccessEndpoint',
-      kind: 'FUNCTION',
-      filePath: 'src/controllers/userController.ts',
-      startLine: 5,
-      endLine: 25
-    };
-    graph.addNode(badController);
+  it('should compute blast radius, transitive callers, and risk factors', () => {
+    const analyzer = new BlastRadiusAnalyzer(graph);
+    const report = analyzer.analyze([repoNode.id]);
 
-    // Violating edge: Controller directly calls DB repo
-    graph.addEdge({
-      sourceId: badController.id,
-      targetId: repoNode.id,
-      relationType: 'CALLS'
-    });
+    expect(report.changedSymbols.length).toBe(1);
+    // Direct caller: serviceNode
+    expect(report.directCallers.some((c) => c.id === serviceNode.id)).toBe(true);
+    // Transitive caller: controllerNode
+    expect(report.transitiveCallers.some((c) => c.id === controllerNode.id)).toBe(true);
+    // Test suite detected: paymentController.test.ts
+    expect(report.impactedTestFiles.length).toBeGreaterThan(0);
+    expect(report.riskScore).toBeGreaterThan(0);
+  });
 
-    const violations = graph.detectLayerViolations();
-    expect(violations.length).toBe(1);
-    expect(violations[0].violation).toContain('directly invokes DB layer');
-    expect(violations[0].source.name).toBe('directDbAccessEndpoint');
+  it('should format token-budgeted compact prompt context without hallucinations', () => {
+    const compactor = new SmartContextCompactor(graph);
+    const result = compactor.generatePromptContext([serviceNode.id], { maxTokens: 1000 });
+
+    expect(result.formattedContext).toContain('CodeGraph Blast Radius');
+    expect(result.formattedContext).toContain('processPaymentTransaction');
+    expect(result.formattedContext).toContain('public async processPaymentTransaction');
+    expect(result.formattedContext).toContain('CALLED BY');
+    expect(result.estimatedTokens).toBeLessThan(1000);
+    expect(result.truncated).toBe(false);
+  });
+
+  it('should parse cross-file imports and link symbol calls with GraphLinker', () => {
+    const testFiles = [
+      {
+        filePath: 'src/math.ts',
+        content: `export function addNumbers(a: number, b: number): number { return a + b; }`
+      },
+      {
+        filePath: 'src/calc.ts',
+        content: `import { addNumbers } from './math';
+export function calculateSum(x: number, y: number): number {
+  return addNumbers(x, y);
+}`
+      }
+    ];
+
+    const store = new CodeGraphStore();
+    const indexer = new IncrementalGraphIndexer(store);
+    const result = indexer.indexFilesInMemory(testFiles);
+
+    expect(result.totalFiles).toBe(2);
+    expect(result.totalSymbols).toBe(2);
+
+    const calcSymbol = store.findNodesByName('calculateSum')[0];
+    const addSymbol = store.findNodesByName('addNumbers')[0];
+
+    expect(calcSymbol).toBeDefined();
+    expect(addSymbol).toBeDefined();
+
+    // Verify GraphLinker created the cross-file CALLS edge
+    const callers = store.findCallers(addSymbol.id);
+    expect(callers.length).toBe(1);
+    expect(callers[0].caller.name).toBe('calculateSum');
   });
 });

@@ -231,12 +231,15 @@ export interface CodeSymbol {
 
 export type RelationType =
   | 'IMPORTS'
+  | 'EXPORTS'
   | 'CALLS'
   | 'EXTENDS'
   | 'IMPLEMENTS'
   | 'USES'
   | 'READS'
   | 'WRITES'
+  | 'REFERENCES'
+  | 'TYPE_REFERENCES'
   | 'EXPOSES'
   | 'DEPENDS_ON'
   | 'DEFINED_IN'
@@ -882,4 +885,5 @@ export interface ImpersonationSession {
   isActive: boolean;
   createdAt: Date;
 }
+
 
