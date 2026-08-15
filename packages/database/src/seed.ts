@@ -25,7 +25,11 @@ import {
   announcements,
   supportTickets,
   supportMessages,
-  documents
+  documents,
+  pullRequests,
+  reviewRuns,
+  reviewStages,
+  reviewFindings
 } from './schema/index.js';
 import { logger } from '@codeguard/logger';
 
@@ -468,11 +472,35 @@ export async function seedDatabase() {
       }).onConflictDoNothing();
     }
 
+    if (demoOrg && proUser) {
+      await db.insert(memberships).values({
+        organizationId: demoOrg.id,
+        userId: proUser.id,
+        role: 'SECURITY_LEAD'
+      }).onConflictDoNothing();
+    }
+
+    if (demoOrg && studentUser) {
+      await db.insert(memberships).values({
+        organizationId: demoOrg.id,
+        userId: studentUser.id,
+        role: 'MEMBER'
+      }).onConflictDoNothing();
+    }
+
     if (demoOrg && orgMemberUser) {
       await db.insert(memberships).values({
         organizationId: demoOrg.id,
         userId: orgMemberUser.id,
         role: 'MEMBER'
+      }).onConflictDoNothing();
+    }
+
+    if (demoOrg && superAdminUser) {
+      await db.insert(memberships).values({
+        organizationId: demoOrg.id,
+        userId: superAdminUser.id,
+        role: 'ADMIN'
       }).onConflictDoNothing();
     }
 
@@ -538,28 +566,93 @@ export async function seedDatabase() {
       }
     }
 
+    let superAdminCustomer = null;
+    if (superAdminUser && segOrg) {
+      [superAdminCustomer] = await db
+        .insert(customers)
+        .values({
+          type: 'ORGANIZATION',
+          segmentId: segOrg.id,
+          name: 'CodeGuard HQ (Platform Super Admin)',
+          email: 'superadmin@codeguard.dev',
+          profession: 'Platform Operations & Security',
+          organizationId: demoOrg?.id,
+          primaryUserId: superAdminUser.id,
+          status: 'ACTIVE'
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (!superAdminCustomer) {
+        [superAdminCustomer] = await db.select().from(customers).where(eq(customers.email, 'superadmin@codeguard.dev')).limit(1);
+      }
+    }
+
     // 10. Seed Subscriptions
     const oneYearAhead = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
     const oneMonthAhead = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    if (studentCustomer && basicPlan) {
-      const [sub] = await db.insert(subscriptions).values({
-        customerId: studentCustomer.id,
-        planId: basicPlan.id,
-        status: 'ACTIVE',
-        billingInterval: 'MONTHLY',
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: oneYearAhead
-      }).returning();
+    if (superAdminCustomer && orgPlan) {
+      let [sub] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.customerId, superAdminCustomer.id))
+        .limit(1);
 
-      if (sub) {
-        await db.insert(subscriptionHistory).values({
-          subscriptionId: sub.id,
+      if (!sub) {
+        [sub] = await db.insert(subscriptions).values({
+          customerId: superAdminCustomer.id,
+          planId: orgPlan.id,
+          status: 'ACTIVE',
+          billingInterval: 'YEARLY',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: oneYearAhead
+        }).returning();
+
+        if (sub) {
+          await db.insert(subscriptionHistory).values({
+            subscriptionId: sub.id,
+            customerId: superAdminCustomer.id,
+            planId: orgPlan.id,
+            action: 'CREATED',
+            reason: 'Platform super admin provisioned'
+          }).onConflictDoNothing();
+        }
+      }
+
+      await db.insert(usageRecords).values([
+        { customerId: superAdminCustomer.id, featureCode: 'MONTHLY_PR_REVIEWS', periodKey: '2026-08', quantity: 142, limit: 2000 },
+        { customerId: superAdminCustomer.id, featureCode: 'MONTHLY_AI_REVIEWS', periodKey: '2026-08', quantity: 380, limit: 5000 },
+        { customerId: superAdminCustomer.id, featureCode: 'REPO_LIMIT', periodKey: 'lifetime', quantity: 18, limit: 50 },
+        { customerId: superAdminCustomer.id, featureCode: 'STORAGE_GB', periodKey: 'lifetime', quantity: 45, limit: 500 }
+      ]).onConflictDoNothing();
+    }
+
+    if (studentCustomer && basicPlan) {
+      let [sub] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.customerId, studentCustomer.id))
+        .limit(1);
+
+      if (!sub) {
+        [sub] = await db.insert(subscriptions).values({
           customerId: studentCustomer.id,
           planId: basicPlan.id,
-          action: 'CREATED',
-          reason: 'Initial student registration'
-        });
+          status: 'ACTIVE',
+          billingInterval: 'MONTHLY',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: oneYearAhead
+        }).returning();
+
+        if (sub) {
+          await db.insert(subscriptionHistory).values({
+            subscriptionId: sub.id,
+            customerId: studentCustomer.id,
+            planId: basicPlan.id,
+            action: 'CREATED',
+            reason: 'Initial student registration'
+          }).onConflictDoNothing();
+        }
       }
 
       // Usage records for student
@@ -571,26 +664,42 @@ export async function seedDatabase() {
     }
 
     if (proCustomer && proPlan) {
-      const [sub] = await db.insert(subscriptions).values({
-        customerId: proCustomer.id,
-        planId: proPlan.id,
-        status: 'ACTIVE',
-        billingInterval: 'MONTHLY',
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: oneMonthAhead
-      }).returning();
+      let [sub] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.customerId, proCustomer.id))
+        .limit(1);
 
-      if (sub) {
-        await db.insert(subscriptionHistory).values({
-          subscriptionId: sub.id,
+      if (!sub) {
+        [sub] = await db.insert(subscriptions).values({
           customerId: proCustomer.id,
           planId: proPlan.id,
-          action: 'CREATED',
-          reason: 'Subscribed to Pro Plan'
-        });
+          status: 'ACTIVE',
+          billingInterval: 'MONTHLY',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: oneMonthAhead
+        }).returning();
 
-        // Invoices for pro
-        const [inv] = await db.insert(invoices).values({
+        if (sub) {
+          await db.insert(subscriptionHistory).values({
+            subscriptionId: sub.id,
+            customerId: proCustomer.id,
+            planId: proPlan.id,
+            action: 'CREATED',
+            reason: 'Subscribed to Pro Plan'
+          }).onConflictDoNothing();
+        }
+      }
+
+      // Invoices for pro
+      let [inv] = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.invoiceNumber, 'INV-PRO-2026-001'))
+        .limit(1);
+
+      if (!inv && sub) {
+        [inv] = await db.insert(invoices).values({
           customerId: proCustomer.id,
           subscriptionId: sub.id,
           invoiceNumber: 'INV-PRO-2026-001',
@@ -611,7 +720,7 @@ export async function seedDatabase() {
             paymentMethod: 'CARD',
             provider: 'MOCK',
             providerTransactionId: 'txn_mock_pro_8892'
-          });
+          }).onConflictDoNothing();
         }
       }
 
@@ -625,26 +734,42 @@ export async function seedDatabase() {
     }
 
     if (orgCustomer && orgPlan) {
-      const [sub] = await db.insert(subscriptions).values({
-        customerId: orgCustomer.id,
-        planId: orgPlan.id,
-        status: 'ACTIVE',
-        billingInterval: 'YEARLY',
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: oneYearAhead
-      }).returning();
+      let [sub] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.customerId, orgCustomer.id))
+        .limit(1);
 
-      if (sub) {
-        await db.insert(subscriptionHistory).values({
-          subscriptionId: sub.id,
+      if (!sub) {
+        [sub] = await db.insert(subscriptions).values({
           customerId: orgCustomer.id,
           planId: orgPlan.id,
-          action: 'CREATED',
-          reason: 'Enterprise contract activated'
-        });
+          status: 'ACTIVE',
+          billingInterval: 'YEARLY',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: oneYearAhead
+        }).returning();
 
-        // Invoices for org
-        const [inv] = await db.insert(invoices).values({
+        if (sub) {
+          await db.insert(subscriptionHistory).values({
+            subscriptionId: sub.id,
+            customerId: orgCustomer.id,
+            planId: orgPlan.id,
+            action: 'CREATED',
+            reason: 'Enterprise contract activated'
+          }).onConflictDoNothing();
+        }
+      }
+
+      // Invoices for org
+      let [inv] = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.invoiceNumber, 'INV-ENT-2026-001'))
+        .limit(1);
+
+      if (!inv && sub) {
+        [inv] = await db.insert(invoices).values({
           customerId: orgCustomer.id,
           subscriptionId: sub.id,
           invoiceNumber: 'INV-ENT-2026-001',
@@ -665,7 +790,7 @@ export async function seedDatabase() {
             paymentMethod: 'INVOICE',
             provider: 'MOCK',
             providerTransactionId: 'txn_mock_org_9921'
-          });
+          }).onConflictDoNothing();
         }
       }
 
@@ -680,14 +805,22 @@ export async function seedDatabase() {
     }
 
     // 11. Seed System Notifications & Announcements
-    const [welcomeNotif] = await db.insert(notifications).values({
-      title: 'Welcome to CodeGuard AI',
-      message: 'Your CodeGuard platform is ready. Install the CLI or connect your GitHub repositories to start automated PR reviews.',
-      type: 'INFO',
-      priority: 'NORMAL',
-      channelsJson: ['IN_APP', 'EMAIL'],
-      targetAudienceJson: { type: 'EVERYONE' }
-    }).returning();
+    let [welcomeNotif] = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.title, 'Welcome to CodeGuard AI'))
+      .limit(1);
+
+    if (!welcomeNotif) {
+      [welcomeNotif] = await db.insert(notifications).values({
+        title: 'Welcome to CodeGuard AI',
+        message: 'Your CodeGuard platform is ready. Install the CLI or connect your GitHub repositories to start automated PR reviews.',
+        type: 'INFO',
+        priority: 'NORMAL',
+        channelsJson: ['IN_APP', 'EMAIL'],
+        targetAudienceJson: { type: 'EVERYONE' }
+      }).returning();
+    }
 
     if (welcomeNotif && proUser && proCustomer) {
       await db.insert(notificationRecipients).values({
@@ -695,7 +828,7 @@ export async function seedDatabase() {
         userId: proUser.id,
         customerId: proCustomer.id,
         isRead: false
-      });
+      }).onConflictDoNothing();
     }
 
     if (welcomeNotif && studentUser && studentCustomer) {
@@ -704,7 +837,7 @@ export async function seedDatabase() {
         userId: studentUser.id,
         customerId: studentCustomer.id,
         isRead: false
-      });
+      }).onConflictDoNothing();
     }
 
     // Platform Announcement
@@ -720,32 +853,40 @@ export async function seedDatabase() {
 
     // 12. Seed Support Ticket
     if (orgCustomer && orgOwnerUser) {
-      const [ticket] = await db.insert(supportTickets).values({
-        ticketNumber: 'TICK-8021',
-        customerId: orgCustomer.id,
-        userId: orgOwnerUser.id,
-        subject: 'Inquiry on Custom Enterprise SSO & SCIM Provisioning',
-        description: 'We are looking to connect our corporate Okta directory with SCIM automated seat provisioning.',
-        category: 'ACCOUNT',
-        priority: 'HIGH',
-        status: 'IN_PROGRESS'
-      }).returning();
+      let [ticket] = await db
+        .select()
+        .from(supportTickets)
+        .where(eq(supportTickets.ticketNumber, 'TICK-8021'))
+        .limit(1);
 
-      if (ticket) {
-        await db.insert(supportMessages).values([
-          {
-            ticketId: ticket.id,
-            senderUserId: orgOwnerUser.id,
-            senderType: 'CUSTOMER',
-            message: 'Hello, could you provide the technical specs for Okta SAML 2.0 integration?'
-          },
-          {
-            ticketId: ticket.id,
-            senderUserId: superAdminUser ? superAdminUser.id : orgOwnerUser.id,
-            senderType: 'ADMIN',
-            message: 'Hi Alex, our enterprise team supports SAML 2.0 and OIDC. I have attached our Okta Configuration Guide.'
-          }
-        ]);
+      if (!ticket) {
+        [ticket] = await db.insert(supportTickets).values({
+          ticketNumber: 'TICK-8021',
+          customerId: orgCustomer.id,
+          userId: orgOwnerUser.id,
+          subject: 'Inquiry on Custom Enterprise SSO & SCIM Provisioning',
+          description: 'We are looking to connect our corporate Okta directory with SCIM automated seat provisioning.',
+          category: 'ACCOUNT',
+          priority: 'HIGH',
+          status: 'IN_PROGRESS'
+        }).returning();
+
+        if (ticket) {
+          await db.insert(supportMessages).values([
+            {
+              ticketId: ticket.id,
+              senderUserId: orgOwnerUser.id,
+              senderType: 'CUSTOMER',
+              message: 'Hello, could you provide the technical specs for Okta SAML 2.0 integration?'
+            },
+            {
+              ticketId: ticket.id,
+              senderUserId: superAdminUser ? superAdminUser.id : orgOwnerUser.id,
+              senderType: 'ADMIN',
+              message: 'Hi Alex, our enterprise team supports SAML 2.0 and OIDC. I have attached our Okta Configuration Guide.'
+            }
+          ]).onConflictDoNothing();
+        }
       }
     }
 
@@ -786,8 +927,25 @@ export async function seedDatabase() {
       }
     ]).onConflictDoNothing();
 
-    // 14. Demo Repository & Policy (Existing CodeGuard pipeline)
+    // 14. Demo Repositories, Policies, PRs & Review Runs
     if (demoOrg) {
+      // Connect Pro and Student demo users to demoOrg memberships so they have tenant access
+      if (proUser) {
+        await db.insert(memberships).values({
+          organizationId: demoOrg.id,
+          userId: proUser.id,
+          role: 'ADMIN'
+        }).onConflictDoNothing();
+      }
+      if (studentUser) {
+        await db.insert(memberships).values({
+          organizationId: demoOrg.id,
+          userId: studentUser.id,
+          role: 'MEMBER'
+        }).onConflictDoNothing();
+      }
+
+      // Repositories
       const [paymentsRepo] = await db
         .insert(repositories)
         .values({
@@ -795,7 +953,7 @@ export async function seedDatabase() {
           provider: 'github',
           providerRepoId: '87654321',
           name: 'payments-service',
-          fullName: 'acme-corp/payments-service',
+          fullName: 'acme/payments-service',
           private: true,
           defaultBranch: 'main',
           cloneUrl: 'https://github.com/acme-corp/payments-service.git',
@@ -804,12 +962,49 @@ export async function seedDatabase() {
         .onConflictDoNothing()
         .returning();
 
-      if (paymentsRepo) {
+      let activeRepo = paymentsRepo;
+      if (!activeRepo) {
+        [activeRepo] = await db.select().from(repositories).where(eq(repositories.name, 'payments-service')).limit(1);
+      }
+
+      const [authGatewayRepo] = await db
+        .insert(repositories)
+        .values({
+          organizationId: demoOrg.id,
+          provider: 'github',
+          providerRepoId: '87654322',
+          name: 'auth-gateway',
+          fullName: 'acme/auth-gateway',
+          private: true,
+          defaultBranch: 'main',
+          cloneUrl: 'https://github.com/acme-corp/auth-gateway.git',
+          installationId: '12345678'
+        })
+        .onConflictDoNothing()
+        .returning();
+
+      const [portalRepo] = await db
+        .insert(repositories)
+        .values({
+          organizationId: demoOrg.id,
+          provider: 'github',
+          providerRepoId: '87654323',
+          name: 'customer-portal',
+          fullName: 'acme/customer-portal',
+          private: true,
+          defaultBranch: 'main',
+          cloneUrl: 'https://github.com/acme-corp/customer-portal.git',
+          installationId: '12345678'
+        })
+        .onConflictDoNothing()
+        .returning();
+
+      if (activeRepo) {
         const [secPolicy] = await db
           .insert(policies)
           .values({
             organizationId: demoOrg.id,
-            repositoryId: paymentsRepo.id,
+            repositoryId: activeRepo.id,
             name: 'Default Zero-Trust Security Policy',
             description: 'Block merges on exposed secrets, critical SAST vulnerabilities, and architectural layer breaches.',
             isDefault: true,
@@ -818,10 +1013,15 @@ export async function seedDatabase() {
           .onConflictDoNothing()
           .returning();
 
-        if (secPolicy) {
+        let activePolicy = secPolicy;
+        if (!activePolicy) {
+          [activePolicy] = await db.select().from(policies).where(eq(policies.repositoryId, activeRepo.id)).limit(1);
+        }
+
+        if (activePolicy) {
           await db.insert(policyRules).values([
             {
-              policyId: secPolicy.id,
+              policyId: activePolicy.id,
               name: 'Block on Detected Secrets',
               ruleType: 'SECRET_BLOCK',
               condition: { blockOnAllSecrets: true },
@@ -829,7 +1029,7 @@ export async function seedDatabase() {
               enabled: true
             },
             {
-              policyId: secPolicy.id,
+              policyId: activePolicy.id,
               name: 'Block on Critical Severity Vulnerabilities',
               ruleType: 'SEVERITY_THRESHOLD',
               condition: { minSeverityToBlock: 'CRITICAL' },
@@ -837,7 +1037,7 @@ export async function seedDatabase() {
               enabled: true
             },
             {
-              policyId: secPolicy.id,
+              policyId: activePolicy.id,
               name: 'Warn on High Severity Issues',
               ruleType: 'SEVERITY_THRESHOLD',
               condition: { minSeverityToWarn: 'HIGH' },
@@ -846,10 +1046,194 @@ export async function seedDatabase() {
             }
           ]).onConflictDoNothing();
         }
+
+        // Seed Sample Pull Requests
+        let [pr142] = await db
+          .select()
+          .from(pullRequests)
+          .where(eq(pullRequests.number, 142))
+          .limit(1);
+
+        if (!pr142) {
+          [pr142] = await db.insert(pullRequests).values({
+            organizationId: demoOrg.id,
+            repositoryId: activeRepo.id,
+            number: 142,
+            title: 'feat: add idempotent charge endpoint and HMAC signature validation',
+            description: 'Implements Stripe-compatible idempotency keys and constant-time HMAC verification in billing webhook processor.',
+            state: 'OPEN',
+            sourceBranch: 'feature/idempotent-charges',
+            targetBranch: 'main',
+            headSha: '9a8f21bc4e5781a93b4510cd294812fa91823719',
+            baseSha: '03c477e5d891b29a471908234671923058912304',
+            authorUsername: 'elena-rostova',
+            isDraft: false
+          }).returning();
+        }
+
+        let [pr138] = await db
+          .select()
+          .from(pullRequests)
+          .where(eq(pullRequests.number, 138))
+          .limit(1);
+
+        if (!pr138) {
+          [pr138] = await db.insert(pullRequests).values({
+            organizationId: demoOrg.id,
+            repositoryId: activeRepo.id,
+            number: 138,
+            title: 'fix(auth): sanitize JWT token claims & Shannon entropy checks',
+            description: 'Strengthens zero-trust token decoding and prevents leaking test tokens in log streams.',
+            state: 'MERGED',
+            sourceBranch: 'fix/token-entropy-guard',
+            targetBranch: 'main',
+            headSha: 'c81923b0a9481237192837192837192837192837',
+            baseSha: '03c477e5d891b29a471908234671923058912304',
+            authorUsername: 'alex-rivera',
+            isDraft: false
+          }).returning();
+        }
+
+        // Seed Sample Review Runs
+        if (pr142) {
+          let [run142] = await db
+            .select()
+            .from(reviewRuns)
+            .where(eq(reviewRuns.pullRequestId, pr142.id))
+            .limit(1);
+
+          if (!run142) {
+            [run142] = await db.insert(reviewRuns).values({
+              organizationId: demoOrg.id,
+              repositoryId: activeRepo.id,
+              pullRequestId: pr142.id,
+              commitSha: pr142.headSha,
+              state: 'PASSED',
+              policyOutcome: 'ALLOW',
+              summary: 'Google Gemini 3.7 Flash AI Review passed with 0 security flaws. AST Graph and Shannon entropy verified 100% clean across all changed diffs.',
+              criticalCount: 0,
+              highCount: 0,
+              mediumCount: 0,
+              lowCount: 0,
+              infoCount: 0,
+              durationMs: 1420,
+              startedAt: new Date(Date.now() - 3600 * 1000),
+              completedAt: new Date(Date.now() - 3598 * 1000)
+            }).returning();
+
+            if (run142) {
+              await db.insert(reviewStages).values([
+                {
+                  reviewRunId: run142.id,
+                  name: 'GRAPH_RESOLVER',
+                  status: 'COMPLETED',
+                  durationMs: 180,
+                  metadata: { filesParsed: 14, symbols: 84 }
+                },
+                {
+                  reviewRunId: run142.id,
+                  name: 'SECRET_SCAN',
+                  status: 'COMPLETED',
+                  durationMs: 95,
+                  metadata: { entropyLeaks: 0, tokensEvaluated: 1842 }
+                },
+                {
+                  reviewRunId: run142.id,
+                  name: 'AI_ANALYSIS',
+                  status: 'COMPLETED',
+                  durationMs: 1050,
+                  metadata: { model: 'Google Gemini 3.7 Flash', verdict: 'APPROVED', confidence: 0.99 }
+                },
+                {
+                  reviewRunId: run142.id,
+                  name: 'POLICY_EVALUATION',
+                  status: 'COMPLETED',
+                  durationMs: 95,
+                  metadata: { rulesSatisfied: 3, rulesFailed: 0 }
+                }
+              ]).onConflictDoNothing();
+            }
+          }
+        }
+
+        // Seed Sample Review Findings
+        if (pr142) {
+          const findingsToSeed = [
+            {
+              organizationId: demoOrg.id,
+              repositoryId: activeRepo.id,
+              pullRequestId: pr142.id,
+              fingerprint: 'fp_sec_001_ghp_entropy_token',
+              severity: 'CRITICAL',
+              category: 'SECRET',
+              source: 'Shannon-Entropy-Scanner',
+              title: 'Hardcoded GitHub Personal Access Token Committed',
+              description: 'Shannon entropy analysis detected a high-entropy string matching GitHub API token format (ghp_*) in client authentication header.',
+              filePath: 'packages/auth/src/token.ts',
+              startLine: 30,
+              endLine: 31,
+              evidence: 'const GITHUB_ACCESS_TOKEN = "ghp_91823719827391827391827398127398";',
+              impact: 'Exposed access tokens allow unauthorized API actions and access to private repositories.',
+              recommendation: 'Remove token and inject via environment variables (GITHUB_TOKEN) from secret manager.',
+              blocking: true,
+              status: 'RESOLVED'
+            },
+            {
+              organizationId: demoOrg.id,
+              repositoryId: activeRepo.id,
+              pullRequestId: pr142.id,
+              fingerprint: 'fp_ast_002_dangerous_eval_rce',
+              severity: 'HIGH',
+              category: 'SAST',
+              source: 'AST-Semantic-Parser',
+              title: 'Dangerous dynamic eval() execution on untrusted input',
+              description: 'AST traversal found direct invocation of eval() on untrusted config parameter, which introduces arbitrary Remote Code Execution vulnerabilities.',
+              filePath: 'apps/api/src/routes/config.ts',
+              startLine: 53,
+              endLine: 54,
+              evidence: 'return eval("(" + untrustedInput + ")");',
+              impact: 'Attacker can execute arbitrary shell or Node.js commands in API container context.',
+              recommendation: 'Use JSON.parse() with strict schema validation instead of dynamic code evaluation.',
+              blocking: true,
+              status: 'OPEN'
+            },
+            {
+              organizationId: demoOrg.id,
+              repositoryId: activeRepo.id,
+              pullRequestId: pr142.id,
+              fingerprint: 'fp_ast_003_race_condition_tx',
+              severity: 'MEDIUM',
+              category: 'ARCHITECTURE',
+              source: 'Gemini-3.7-AI-Reviewer',
+              title: 'Non-atomic payment balance deduction without database lock',
+              description: 'Concurrency race condition detected where ledger updates occur across two non-transactional database statements without FOR UPDATE row lock.',
+              filePath: 'apps/api/src/routes/billing.ts',
+              startLine: 118,
+              endLine: 125,
+              evidence: 'await db.update(customers).set({ balance: current - amount });',
+              impact: 'Concurrent checkout requests could lead to double-spend inconsistencies under high throughput.',
+              recommendation: 'Wrap balance mutations in db.transaction() with atomic SQL subtraction: balance = balance - amount.',
+              blocking: false,
+              status: 'OPEN'
+            }
+          ];
+
+          for (const f of findingsToSeed) {
+            const [existing] = await db
+              .select()
+              .from(reviewFindings)
+              .where(eq(reviewFindings.fingerprint, f.fingerprint))
+              .limit(1);
+
+            if (!existing) {
+              await db.insert(reviewFindings).values(f as any).onConflictDoNothing();
+            }
+          }
+        }
       }
     }
 
-    logger.info('✅ Complete database seed completed successfully with all plans, features, benefits, customers, subscriptions, and portal mock data.');
+    logger.info('✅ Complete database seed completed successfully with all plans, features, benefits, customers, subscriptions, PRs, review runs, and findings.');
   } catch (error) {
     logger.error({ err: error }, '❌ Database seeding error');
   }

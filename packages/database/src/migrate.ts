@@ -166,6 +166,12 @@ export async function runMigrations() {
       ALTER TABLE pull_requests ADD COLUMN IF NOT EXISTS opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
       ALTER TABLE pull_requests ADD COLUMN IF NOT EXISTS merged_at TIMESTAMPTZ;
       ALTER TABLE pull_requests ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
+      DO $$ BEGIN
+        ALTER TABLE pull_requests ALTER COLUMN provider_pr_id DROP NOT NULL;
+      EXCEPTION WHEN OTHERS THEN NULL; END $$;
+      DO $$ BEGIN
+        ALTER TABLE pull_requests ALTER COLUMN pr_number DROP NOT NULL;
+      EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
       CREATE TABLE IF NOT EXISTS review_runs (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -196,8 +202,13 @@ export async function runMigrations() {
         started_at TIMESTAMPTZ,
         completed_at TIMESTAMPTZ,
         duration_ms INTEGER,
-        error TEXT
+        error TEXT,
+        metadata JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE review_stages ADD COLUMN IF NOT EXISTS metadata JSONB;
+      ALTER TABLE review_stages ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
       CREATE TABLE IF NOT EXISTS review_findings (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
