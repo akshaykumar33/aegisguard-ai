@@ -99,7 +99,7 @@ export async function organizationPortalRoutes(app: FastifyInstance): Promise<vo
     if (!auth) return;
 
     try {
-      const members = await db
+      const rawMembers = await db
         .select({
           id: memberships.id,
           role: memberships.role,
@@ -110,7 +110,19 @@ export async function organizationPortalRoutes(app: FastifyInstance): Promise<vo
         .innerJoin(users, eq(memberships.userId, users.id))
         .where(eq(memberships.organizationId, auth.org.id));
 
-      return reply.send({ members });
+      // Flatten so the frontend can access name/email directly
+      const members = rawMembers.map((m) => ({
+        id: m.id,
+        name: m.user.name ?? m.user.email?.split('@')[0] ?? 'Unknown',
+        email: m.user.email ?? '—',
+        role: m.role,
+        joinedAt: m.createdAt,
+        avatarUrl: m.user.avatarUrl ?? null,
+      }));
+
+      const seatLimit = (await entitlementEngine.getLimit(auth.customer.id, 'USER_SEATS')) || 50;
+
+      return reply.send({ members, seatLimit });
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
     }

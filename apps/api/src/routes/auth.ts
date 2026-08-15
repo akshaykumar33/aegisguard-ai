@@ -187,10 +187,16 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       // Read the flag off the seeded user rather than trusting the requested role.
       const isPlatformAdmin = user.isPlatformAdmin;
 
+      let orgId = customer?.organizationId ?? undefined;
+      if (!orgId) {
+        const [mem] = await db.select().from(memberships).where(eq(memberships.userId, user.id)).limit(1);
+        if (mem) orgId = mem.organizationId;
+      }
+
       const token = await signJwt({
         sub: user.id,
         email: user.email,
-        orgId: customer?.organizationId ?? undefined,
+        orgId,
         customerId: customer?.id ?? undefined,
         role: isPlatformAdmin ? 'ADMIN' : (role === 'org' ? 'OWNER' : 'MEMBER'),
         isPlatformAdmin
