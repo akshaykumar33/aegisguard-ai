@@ -1,0 +1,31 @@
+{
+  "name": "@codeguard/cli",
+  "version": "1.0.0",
+  "description": "CodeGuard & OrgCode Enterprise CLI & Git Guardrail Engine",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "codeguard": "./bin/codeguard.js",
+    "orgcode": "./bin/orgcode.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "lint": "eslint src/ --ext .ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@codeguard/policy-engine": "workspace:*",
+    "@codeguard/security-scanner": "workspace:*",
+    "@codeguard/types": "workspace:*",
+    "@codeguard/logger": "workspace:*",
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3",
+    "vitest": "^3.0.5"
+  }
+}
