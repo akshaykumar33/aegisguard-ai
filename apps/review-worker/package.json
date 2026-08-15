@@ -1,0 +1,38 @@
+{
+  "name": "@codeguard/review-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "review:live": "tsx src/liveReview.ts",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "@codeguard/ai-reviewer": "workspace:*",
+    "@codeguard/ai-verifier": "workspace:*",
+    "@codeguard/auth": "workspace:*",
+    "@codeguard/code-graph": "workspace:*",
+    "@codeguard/code-parser": "workspace:*",
+    "@codeguard/config": "workspace:*",
+    "@codeguard/database": "workspace:*",
+    "@codeguard/github": "workspace:*",
+    "@codeguard/logger": "workspace:*",
+    "@codeguard/policy-engine": "workspace:*",
+    "@codeguard/queue": "workspace:*",
+    "@codeguard/retrieval": "workspace:*",
+    "@codeguard/security-scanner": "workspace:*",
+    "@codeguard/types": "workspace:*",
+    "bullmq": "^5.41.6",
+    "drizzle-orm": "^0.39.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}
