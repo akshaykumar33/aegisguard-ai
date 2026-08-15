@@ -26,22 +26,19 @@ import {
 import { eq, and, desc, sql, like, ilike } from 'drizzle-orm';
 import { signJwt, verifyJwt } from '@codeguard/auth';
 import { entitlementEngine, subscriptionService, notificationDispatcher } from '@codeguard/policy-engine';
+import { requirePlatformAdmin } from '../middleware/tenantAuth.js';
 
 export async function adminPortalRoutes(app: FastifyInstance): Promise<void> {
-  // Helper to verify Admin authorization
+  // Enforced for every route in this encapsulated plugin, including any added
+  // later. The previous per-route helper verified that the JWT was valid but
+  // never checked isPlatformAdmin, so any authenticated user could reach the
+  // whole platform-admin surface.
+  app.addHook('preHandler', requirePlatformAdmin);
+
+  // The hook has already rejected non-admins by the time a handler runs; this
+  // just surfaces the verified payload to the existing call sites.
   async function requireAdmin(req: any, reply: any) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      reply.status(401).send({ error: 'Admin authentication required' });
-      return null;
-    }
-    const token = authHeader.replace('Bearer ', '').trim();
-    const payload = await verifyJwt(token);
-    if (!payload) {
-      reply.status(401).send({ error: 'Invalid or expired token' });
-      return null;
-    }
-    return payload;
+    return req.auth ?? null;
   }
 
   // 1. Platform Dashboard KPIs & Business Charts
