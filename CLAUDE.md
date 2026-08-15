@@ -95,7 +95,11 @@ Every domain table carries `organizationId`, and every route filters by it. `app
 - **Webhook signature verification is production-only.** `handleGitHubWebhook` rejects a bad HMAC only when `NODE_ENV === 'production'`, so local deliveries can be replayed unsigned. The raw body needed for HMAC is captured by a custom Fastify `application/json` content-type parser in `apps/webhook-worker/src/index.ts` — parsing the body any other way breaks verification.
 - **The web app is demo-resilient by design.** `apps/web/lib/api.ts` wraps each `fetch` in a try/catch that falls back to exported `MOCK_*` fixtures and merges partial API responses over them. Dashboards therefore render fully populated with the API down; when debugging "wrong data", check whether the mock path was taken. There are no tests for `apps/web`.
 - **Naming.** Code, packages, and the DB use **CodeGuard** / `@codeguard/*`; `README.md` and `.env.example` brand the product **AegisGuard AI**. Both refer to the same system — keep package identifiers as `@codeguard/*`.
-- **Conventional Commits** are enforced by the CLI's own git hooks (`packages/cli/src/commands/commitMsg.ts`), and the repo's history follows `type(scope): subject`.
+- **Conventional Commits & Clean History.** Follow `type(scope): subject` with descriptive bulleted bodies. Create small, granular, logical commits.
+- **AI Agent Governance & Attribution.** See `AGENTS.md` for mandatory rules:
+  - **NO SELF CO-AUTHORING**: NEVER add `Co-authored-by: AI / Assistant / Claude` or credit AI entities in commits/PRs. All work is authored solely by the developer.
+  - **ZERO DESTRUCTIVE COMMANDS**: Never run `git reset --hard`, `git clean -fdx`, or drop data without explicit human instructions.
+  - **ZERO-TRUST CONFIDENTIALITY**: Never print, log, leak, or commit real API keys, secrets, private tokens, or customer PII. Always use synthetic mocks.
 
 ## Reference docs
 
