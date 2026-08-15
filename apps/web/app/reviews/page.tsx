@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/lib/store';
-import { api, MOCK_STATS } from '@/lib/api';
+import { apiClient } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -27,19 +28,24 @@ export default function ReviewsPage() {
   const [activeTab, setActiveTab] = useState<'findings' | 'diff' | 'graph'>('findings');
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM'>('ALL');
 
-  const [reviewsList, setReviewsList] = useState(MOCK_STATS.recentReviews);
-  const [findingsList] = useState(MOCK_STATS.recentFindings);
+  const reviewsResource = useResource(() => apiClient.reviews());
+  const findingsResource = useResource(() => apiClient.findings());
+
+  const reviewsList: any[] = reviewsResource.data?.data ?? [];
+  const findingsList: any[] = findingsResource.data?.data ?? [];
 
   const handleTriggerReview = async () => {
     setIsRunningReview(true);
-    toast.info(`Triggering Gemini 3.7 AST Review on ${selectedRepo}...`);
-
-    setTimeout(async () => {
-      const newReview = await api.runReviewSimulation(selectedRepo, selectedBranch, selectedModel);
-      setReviewsList((prev) => [newReview, ...prev]);
+    try {
+      // Reviews are triggered by the webhook pipeline, not the browser. Reloading
+      // surfaces runs the workers have actually produced; the previous handler
+      // fabricated a passing result client-side and displayed it as real.
+      reviewsResource.reload();
+      findingsResource.reload();
+      toast.success('Refreshed review runs from the review pipeline.');
+    } finally {
       setIsRunningReview(false);
-      toast.success(`AI Code Review completed with verdict: ${newReview.verdict}`);
-    }, 1200);
+    }
   };
 
   const filteredFindings = findingsList.filter(

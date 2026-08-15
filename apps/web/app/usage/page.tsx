@@ -2,15 +2,21 @@
 
 import React from 'react';
 import { useApp } from '@/lib/store';
-import { MOCK_METERS } from '@/lib/api';
+import { apiClient } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
+import { Resource } from '@/components/ui/ResourceStates';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Progress } from '@/components/ui/Progress';
 import { Zap, AlertTriangle, ArrowUpRight } from 'lucide-react';
+import { formatFeatureCode } from '@/lib/utils';
 
 export default function UsagePage() {
   const { setIsUpgradeModalOpen, setIsTicketModalOpen } = useApp();
+  // Overview carries the derived meter shape (current/limit/percentage/flags);
+  // /customer/usage returns raw records that would need the same maths again.
+  const usage = useResource(() => apiClient.customerOverview());
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -36,12 +42,20 @@ export default function UsagePage() {
       </div>
 
       {/* Quota meters grid */}
+      <Resource
+        state={usage}
+        loadingLabel="Loading quota meters…"
+        emptyWhen={(d) => !d.usageMeters || Object.keys(d.usageMeters).length === 0}
+        emptyTitle="No usage recorded yet"
+        emptyDescription="Meters appear once reviews start consuming your plan quota."
+      >
+        {(data) => (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {Object.entries(MOCK_METERS).map(([key, meter]) => (
+        {Object.entries(data.usageMeters as Record<string, any>).map(([key, meter]) => (
           <Card key={key} className="p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-foreground font-heading">{meter.name}</h3>
+                <h3 className="text-sm font-bold text-foreground font-heading">{formatFeatureCode(key)}</h3>
                 <p className="text-xs text-text-secondary">Tracked per monthly billing cycle</p>
               </div>
               <Badge
@@ -63,6 +77,8 @@ export default function UsagePage() {
           </Card>
         ))}
       </div>
+        )}
+      </Resource>
     </div>
   );
 }

@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { useApp } from '@/lib/store';
-import { api, MOCK_METERS } from '@/lib/api';
+import { apiClient } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
+import { Resource } from '@/components/ui/ResourceStates';
+import { formatFeatureCode } from '@/lib/utils';
 import { DashboardStats } from '@/lib/types';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -25,15 +28,9 @@ import { formatDateTime } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { persona, setIsUpgradeModalOpen } = useApp();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-
-  useEffect(() => {
-    async function loadData() {
-      const data = await api.getStats();
-      setStats(data);
-    }
-    loadData();
-  }, []);
+  const statsResource = useResource(() => apiClient.dashboardStats());
+  const overview = useResource(() => apiClient.customerOverview());
+  const stats = statsResource.data as DashboardStats | null;
 
   return (
     <div className="space-y-6">
@@ -150,11 +147,19 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        <Resource
+          state={overview}
+          loadingLabel="Loading quota meters…"
+          emptyWhen={(d) => !d.usageMeters || Object.keys(d.usageMeters).length === 0}
+          emptyTitle="No usage recorded yet"
+          emptyDescription="Meters appear once reviews start consuming your plan quota."
+        >
+          {(data) => (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {Object.entries(MOCK_METERS).slice(0, 3).map(([key, meter]) => (
+          {Object.entries(data.usageMeters as Record<string, any>).slice(0, 3).map(([key, meter]) => (
             <Card key={key} className="p-4 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-foreground">{meter.name}</span>
+                <span className="font-medium text-foreground">{formatFeatureCode(key)}</span>
                 <Badge
                   variant={meter.isExceeded ? 'danger' : meter.isWarning ? 'warning' : 'success'}
                   size="sm"
@@ -174,6 +179,8 @@ export default function DashboardPage() {
             </Card>
           ))}
         </div>
+          )}
+        </Resource>
       </div>
 
       {/* 4. REVIEWS & FINDINGS SPLIT */}

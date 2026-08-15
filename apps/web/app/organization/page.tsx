@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/lib/store';
-import { MOCK_MEMBERS } from '@/lib/api';
+import { apiClient } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
+import { Resource } from '@/components/ui/ResourceStates';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -13,14 +15,15 @@ import { toast } from 'sonner';
 export default function OrganizationPage() {
   const { setIsInviteModalOpen } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
-  const [members, setMembers] = useState(MOCK_MEMBERS);
+  const membersResource = useResource(() => apiClient.orgMembers());
 
-  const filteredMembers = members.filter(
-    (m) =>
-      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filterMembers = (members: any[]) =>
+    members.filter(
+      (m) =>
+        m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.role?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -50,9 +53,15 @@ export default function OrganizationPage() {
         <div>
           <div className="text-xs font-bold uppercase tracking-wider text-text-muted">Enterprise Seat Allocation</div>
           <div className="text-xl font-extrabold text-foreground font-heading mt-1">
-            {members.length} / 5 Seats Assigned
+            {membersResource.data
+              ? `${membersResource.data.members.length} / ${membersResource.data.seatLimit ?? '—'} Seats Assigned`
+              : 'Seats —'}
           </div>
-          <p className="text-xs text-text-secondary mt-0.5">2 seats available in active subscription.</p>
+          <p className="text-xs text-text-secondary mt-0.5">
+            {membersResource.data?.seatLimit
+              ? `${Math.max(0, membersResource.data.seatLimit - membersResource.data.members.length)} seats available in active subscription.`
+              : 'Seat allocation is set by your plan.'}
+          </p>
         </div>
 
         <Button variant="outline" size="sm" onClick={() => setIsInviteModalOpen(true)}>
@@ -73,9 +82,19 @@ export default function OrganizationPage() {
               className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-input border border-border-subtle focus:border-primary text-xs text-foreground outline-none"
             />
           </div>
-          <span className="text-xs text-text-muted">{filteredMembers.length} Members</span>
+          <span className="text-xs text-text-muted">
+            {membersResource.data ? filterMembers(membersResource.data.members).length : 0} Members
+          </span>
         </div>
 
+        <Resource
+          state={membersResource}
+          loadingLabel="Loading members…"
+          emptyWhen={(d) => !d.members?.length}
+          emptyTitle="No members yet"
+          emptyDescription="Invite a teammate to get started."
+        >
+          {(data) => (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
@@ -88,7 +107,7 @@ export default function OrganizationPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {filteredMembers.map((member) => (
+              {filterMembers(data.members).map((member: any) => (
                 <tr key={member.id} className="hover:bg-card-hover/50 transition-colors">
                   <td className="py-3.5 px-4 font-bold text-foreground flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-primary-light text-primary flex items-center justify-center font-bold text-[10px]">
@@ -117,6 +136,8 @@ export default function OrganizationPage() {
             </tbody>
           </table>
         </div>
+          )}
+        </Resource>
       </Card>
     </div>
   );

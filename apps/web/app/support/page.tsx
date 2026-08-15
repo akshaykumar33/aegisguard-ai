@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useApp } from '@/lib/store';
-import { MOCK_TICKETS } from '@/lib/api';
+import { apiClient } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
+import { Resource } from '@/components/ui/ResourceStates';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -11,7 +13,7 @@ import { formatDate } from '@/lib/utils';
 
 export default function SupportPage() {
   const { setIsTicketModalOpen } = useApp();
-  const [tickets] = useState(MOCK_TICKETS);
+  const ticketsResource = useResource(() => apiClient.supportTickets());
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -37,9 +39,18 @@ export default function SupportPage() {
       </div>
 
       <Card className="p-6 space-y-4">
+        <Resource
+          state={ticketsResource}
+          loadingLabel="Loading tickets…"
+          emptyWhen={(d) => !d.tickets?.length}
+          emptyTitle="No support tickets"
+          emptyDescription="Open a ticket and it will appear here with its status and priority."
+        >
+          {(data) => (
+            <>
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-foreground font-heading">Your Support Tickets</h3>
-          <span className="text-xs text-text-muted">{tickets.length} Active</span>
+          <span className="text-xs text-text-muted">{data.tickets.length} Active</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -55,7 +66,7 @@ export default function SupportPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {tickets.map((t) => (
+              {data.tickets.map((t: any) => (
                 <tr key={t.id} className="hover:bg-card-hover/50 transition-colors">
                   <td className="py-3.5 px-4 font-mono font-bold text-primary">{t.id}</td>
                   <td className="py-3.5 px-4 font-medium text-foreground">{t.subject}</td>
@@ -76,6 +87,9 @@ export default function SupportPage() {
             </tbody>
           </table>
         </div>
+            </>
+          )}
+        </Resource>
       </Card>
     </div>
   );

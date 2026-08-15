@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
-import { MOCK_PLANS } from '@/lib/api';
+import { apiClient } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
+import { Resource } from '@/components/ui/ResourceStates';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -10,6 +12,8 @@ import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export default function AdminPlansPage() {
+  const plans = useResource(() => apiClient.adminPlans());
+
   return (
     <div className="space-y-8 animate-fadeIn">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-subtle pb-6">
@@ -33,8 +37,16 @@ export default function AdminPlansPage() {
         </Button>
       </div>
 
+      <Resource
+        state={plans}
+        loadingLabel="Loading plan catalog…"
+        emptyWhen={(d) => !d.plans?.length}
+        emptyTitle="No plans configured"
+        emptyDescription="Create a plan to start offering subscriptions."
+      >
+        {(data) => (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {MOCK_PLANS.map((plan) => (
+        {data.plans.map((plan: any) => (
           <Card key={plan.id} className="p-6 flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -65,6 +77,8 @@ export default function AdminPlansPage() {
           </Card>
         ))}
       </div>
+        )}
+      </Resource>
     </div>
   );
 }

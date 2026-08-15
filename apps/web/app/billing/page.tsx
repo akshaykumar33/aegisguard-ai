@@ -2,7 +2,9 @@
 
 import React from 'react';
 import { useApp } from '@/lib/store';
-import { MOCK_INVOICES } from '@/lib/api';
+import { apiClient } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
+import { Resource } from '@/components/ui/ResourceStates';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -12,6 +14,7 @@ import { toast } from 'sonner';
 
 export default function BillingPage() {
   const { persona, setIsUpgradeModalOpen } = useApp();
+  const billing = useResource(() => apiClient.customerBilling());
 
   const handleDownloadReceipt = (invNumber: string) => {
     toast.success(`Receipt ${invNumber} PDF downloaded!`);
@@ -75,50 +78,64 @@ export default function BillingPage() {
 
       {/* Invoice Ledger Table */}
       <Card className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-foreground font-heading">Invoice History</h3>
-          <span className="text-xs text-text-muted font-mono">{MOCK_INVOICES.length} Invoices</span>
-        </div>
+        <Resource
+          state={billing}
+          loadingLabel="Loading invoices…"
+          emptyWhen={(d) => !d.invoices?.length}
+          emptyTitle="No invoices yet"
+          emptyDescription="Invoices appear here once your first billing period closes."
+        >
+          {(data) => (
+            <>
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-foreground font-heading">Invoice History</h3>
+                <span className="text-xs text-text-muted font-mono">{data.invoices.length} Invoices</span>
+              </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border-subtle text-text-muted uppercase text-[10px] tracking-wider">
-                <th className="py-3 px-4">Invoice #</th>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Description</th>
-                <th className="py-3 px-4">Amount</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Receipt</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle">
-              {MOCK_INVOICES.map((inv) => (
-                <tr key={inv.id} className="hover:bg-card-hover/50 transition-colors">
-                  <td className="py-3.5 px-4 font-mono font-bold text-foreground">{inv.invoiceNumber}</td>
-                  <td className="py-3.5 px-4 text-text-secondary">{formatDate(inv.createdAt)}</td>
-                  <td className="py-3.5 px-4 text-foreground font-medium">{inv.description}</td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-foreground">{formatCurrency(inv.amountDue)}</td>
-                  <td className="py-3.5 px-4">
-                    <Badge variant="success" size="sm">
-                      {inv.status}
-                    </Badge>
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      leftIcon={<Download className="w-3 h-3" />}
-                      onClick={() => handleDownloadReceipt(inv.invoiceNumber)}
-                    >
-                      PDF
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border-subtle text-text-muted uppercase text-[10px] tracking-wider">
+                      <th className="py-3 px-4">Invoice #</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Description</th>
+                      <th className="py-3 px-4">Amount</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Receipt</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-subtle">
+                    {data.invoices.map((inv: any) => (
+                      <tr key={inv.id} className="hover:bg-card-hover/50 transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-bold text-foreground">{inv.invoiceNumber}</td>
+                        <td className="py-3.5 px-4 text-text-secondary">{formatDate(inv.createdAt)}</td>
+                        <td className="py-3.5 px-4 text-foreground font-medium">{inv.description}</td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-foreground">
+                          {formatCurrency(inv.amountDue)}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <Badge variant="success" size="sm">
+                            {inv.status}
+                          </Badge>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            leftIcon={<Download className="w-3 h-3" />}
+                            onClick={() => handleDownloadReceipt(inv.invoiceNumber)}
+                          >
+                            PDF
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </Resource>
       </Card>
     </div>
   );

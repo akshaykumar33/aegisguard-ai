@@ -2,7 +2,9 @@
 
 import React from 'react';
 import { useApp } from '@/lib/store';
-import { MOCK_BENEFITS } from '@/lib/api';
+import { apiClient } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
+import { Resource } from '@/components/ui/ResourceStates';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -10,6 +12,7 @@ import { Sparkles, CheckCircle2, Shield, Lock } from 'lucide-react';
 
 export default function BenefitsPage() {
   const { persona, setIsUpgradeModalOpen } = useApp();
+  const overview = useResource(() => apiClient.customerOverview());
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -30,17 +33,24 @@ export default function BenefitsPage() {
       </div>
 
       {/* Grid of technical features & benefits */}
+      <Resource
+        state={overview}
+        loadingLabel="Loading plan benefits…"
+        emptyWhen={(d) => !d.entitlements?.benefits?.length}
+        emptyTitle="No benefits listed"
+        emptyDescription="Your plan has no benefits configured yet."
+      >
+        {(data) => (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {MOCK_BENEFITS.map((b) => (
+        {data.entitlements.benefits.map((b: any) => (
           <Card key={b.id} hoverable className="p-5 flex flex-col justify-between space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Badge variant="primary" size="sm">
-                  {b.category}
+                  {data.entitlements.planTier}
                 </Badge>
-                <span className="text-[10px] font-mono text-text-muted">{b.minTier} Tier</span>
               </div>
-              <h3 className="text-sm font-bold text-foreground font-heading">{b.name}</h3>
+              <h3 className="text-sm font-bold text-foreground font-heading">{b.title}</h3>
               <p className="text-xs text-text-secondary leading-relaxed">{b.description}</p>
             </div>
 
@@ -51,6 +61,8 @@ export default function BenefitsPage() {
           </Card>
         ))}
       </div>
+        )}
+      </Resource>
     </div>
   );
 }

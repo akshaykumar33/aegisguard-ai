@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ThemeName, AccentColor, DemoPersonaRole, PersonaProfile } from './types';
-import { api } from './api';
+import { apiClient, ApiError } from './client';
 import { toast as sonnerToast } from 'sonner';
 
 interface AppContextType {
@@ -119,16 +119,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setPersonaRole = async (role: DemoPersonaRole) => {
-    setPersonaRoleState(role);
-    localStorage.setItem('codeguard_role', role);
     const profile = PERSONA_PROFILES[role];
+
     try {
-      const res = await api.switchPersona(role);
-      if (res.token) api.setToken(res.token);
-    } catch {
-      // fallback
+      // demoLogin stores the returned JWT on the client, so every subsequent
+      // request is authenticated. Without a token the API now returns 401 rather
+      // than silently granting access, so a failure here must be surfaced.
+      await apiClient.demoLogin(role);
+      setPersonaRoleState(role);
+      localStorage.setItem('codeguard_role', role);
+      sonnerToast.success(`Switched persona to ${profile.name} (${profile.planName})`);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Could not switch persona.';
+      sonnerToast.error('Sign-in failed', { description: message });
     }
-    sonnerToast.success(`Switched persona to ${profile.name} (${profile.planName})`);
   };
 
   const persona = PERSONA_PROFILES[personaRole] || PERSONA_PROFILES.pro;

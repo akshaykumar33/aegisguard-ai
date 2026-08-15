@@ -3,7 +3,9 @@
 import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { useApp } from '@/lib/store';
-import { MOCK_PLANS } from '@/lib/api';
+import { apiClient, ApiError } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
+import { LoadingState, ErrorState } from '@/components/ui/ResourceStates';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Check, Sparkles } from 'lucide-react';
@@ -16,16 +18,36 @@ export function UpgradeModal() {
   const [billingInterval, setBillingInterval] = useState<'MONTHLY' | 'ANNUAL'>('MONTHLY');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleUpgrade = () => {
+  // Only fetch the catalogue while the modal is open.
+  const subscription = useResource(
+    () => (isUpgradeModalOpen ? apiClient.customerSubscription() : Promise.resolve(null as any)),
+    [isUpgradeModalOpen]
+  );
+
+  const availablePlans: any[] = subscription.data?.availablePlans ?? [];
+
+  const handleUpgrade = async () => {
+    const plan = availablePlans.find((p) => p.slug === selectedPlanSlug);
+    if (!plan) {
+      toast.error('Select a plan to continue.');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Real plan change: this used to be a setTimeout that reported success
+      // without contacting the API at all.
+      await apiClient.changeSubscription(plan.id, billingInterval === 'ANNUAL' ? 'YEARLY' : 'MONTHLY');
       setIsUpgradeModalOpen(false);
-      const plan = MOCK_PLANS.find((p) => p.slug === selectedPlanSlug);
-      toast.success(`Successfully upgraded account to ${plan?.name}!`, {
-        description: `Your new entitlements and quota limits are active immediately.`,
+      toast.success(`Subscription changed to ${plan.name}`, {
+        description: 'Your new entitlements and quota limits are active immediately.',
       });
-    }, 900);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Could not change your subscription.';
+      toast.error('Upgrade failed', { description: message });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -63,8 +85,11 @@ export function UpgradeModal() {
         </div>
 
         {/* Plan Cards Grid */}
+        {subscription.loading && <LoadingState label="Loading plans…" />}
+        {subscription.error && <ErrorState error={subscription.error} onRetry={subscription.reload} />}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {MOCK_PLANS.map((plan) => {
+          {availablePlans.map((plan: any) => {
             const isSelected = selectedPlanSlug === plan.slug;
             const price = billingInterval === 'ANNUAL' ? plan.priceMonthly * 0.8 : plan.priceMonthly;
 
@@ -99,10 +124,18 @@ export function UpgradeModal() {
                   </div>
 
                   <ul className="space-y-2 border-t border-border-subtle pt-4">
-                    {plan.features.map((f, i) => (
+                    {/* The API returns { feature, value, isEnabled } records rather
+                        than plain strings, so only enabled entries are listed and
+                        numeric limits are shown alongside their name. */}
+                    {(plan.features ?? [])
+                      .filter((f: any) => f.isEnabled)
+                      .map((f: any, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-xs text-text-secondary">
                         <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                        <span>{f}</span>
+                        <span>
+                          {f.feature?.name ?? f.feature?.code}
+                          {typeof f.value === 'number' && f.value > 0 ? `: ${f.value.toLocaleString()}` : ''}
+                        </span>
                       </li>
                     ))}
                   </ul>

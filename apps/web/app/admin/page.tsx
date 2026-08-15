@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/lib/store';
+import { apiClient, ApiError } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -28,148 +30,57 @@ import {
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { toast } from 'sonner';
 
-interface CustomerAccount {
-  id: string;
-  name: string;
-  domain: string;
-  ownerEmail: string;
-  tier: 'ENTERPRISE' | 'PRO' | 'STUDENT';
-  mrr: number;
-  seatsUsed: number;
-  seatsTotal: number;
-  monthlyReviews: number;
-  quotaLimit: number;
-  status: 'ACTIVE' | 'TRIAL' | 'DELINQUENT';
-  riskScore: 'LOW' | 'MEDIUM' | 'HIGH';
-  joinedAt: string;
-  apiKey: string;
-}
-
-const MOCK_CUSTOMERS: CustomerAccount[] = [
-  {
-    id: 'cust-901',
-    name: 'Acme Payments Inc.',
-    domain: 'acme.com',
-    ownerEmail: 'finance-lead@acme.com',
-    tier: 'ENTERPRISE',
-    mrr: 49900,
-    seatsUsed: 42,
-    seatsTotal: 100,
-    monthlyReviews: 1420,
-    quotaLimit: 5000,
-    status: 'ACTIVE',
-    riskScore: 'LOW',
-    joinedAt: '2025-11-12T10:00:00Z',
-    apiKey: 'cg_live_99a8f21bc90a88e17823',
-  },
-  {
-    id: 'cust-902',
-    name: 'Stripe Fintech Labs',
-    domain: 'fintech-labs.io',
-    ownerEmail: 'alex@fintech-labs.io',
-    tier: 'ENTERPRISE',
-    mrr: 49900,
-    seatsUsed: 88,
-    seatsTotal: 100,
-    monthlyReviews: 4890,
-    quotaLimit: 5000,
-    status: 'ACTIVE',
-    riskScore: 'LOW',
-    joinedAt: '2026-01-05T14:30:00Z',
-    apiKey: 'cg_live_77182ba891230198a287',
-  },
-  {
-    id: 'cust-903',
-    name: 'Elena Rostova (Solo Engineer)',
-    domain: 'elena.dev',
-    ownerEmail: 'elena@codeguard.dev',
-    tier: 'PRO',
-    mrr: 2900,
-    seatsUsed: 1,
-    seatsTotal: 1,
-    monthlyReviews: 184,
-    quotaLimit: 500,
-    status: 'ACTIVE',
-    riskScore: 'LOW',
-    joinedAt: '2026-02-14T08:15:00Z',
-    apiKey: 'cg_live_11823901a88200192bc9',
-  },
-  {
-    id: 'cust-904',
-    name: 'Stanford CodeClub',
-    domain: 'stanford.edu',
-    ownerEmail: 'ari@stanford.edu',
-    tier: 'STUDENT',
-    mrr: 0,
-    seatsUsed: 1,
-    seatsTotal: 1,
-    monthlyReviews: 42,
-    quotaLimit: 100,
-    status: 'ACTIVE',
-    riskScore: 'LOW',
-    joinedAt: '2026-03-01T12:00:00Z',
-    apiKey: 'cg_live_student_882019a823',
-  },
-  {
-    id: 'cust-905',
-    name: 'CyberDefend Security',
-    domain: 'cyberdefend.co',
-    ownerEmail: 'ops@cyberdefend.co',
-    tier: 'ENTERPRISE',
-    mrr: 49900,
-    seatsUsed: 12,
-    seatsTotal: 25,
-    monthlyReviews: 320,
-    quotaLimit: 2500,
-    status: 'DELINQUENT',
-    riskScore: 'HIGH',
-    joinedAt: '2025-10-20T16:45:00Z',
-    apiKey: 'cg_live_99281a82300198bc72',
-  },
-];
 
 export default function AdminCrmPage() {
   const { setPersonaRole } = useApp();
-  const [customers, setCustomers] = useState<CustomerAccount[]>(MOCK_CUSTOMERS);
+  const dashboard = useResource(() => apiClient.adminDashboard());
+  const customersResource = useResource(() => apiClient.adminCustomers());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTier, setSelectedTier] = useState<string>('ALL');
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerAccount | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+
+  const customers: any[] = customersResource.data?.customers ?? [];
+  const kpis = dashboard.data?.kpis;
 
   const filteredCustomers = customers.filter((c) => {
-    const matchesSearch =
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.domain.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.ownerEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.id.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesTier = selectedTier === 'ALL' || c.tier === selectedTier;
+    const haystack = [c.name, c.email, c.id, c.primaryUser?.email].filter(Boolean).join(' ').toLowerCase();
+    const matchesSearch = haystack.includes(searchQuery.toLowerCase());
+    const matchesTier = selectedTier === 'ALL' || c.currentPlan?.tier === selectedTier;
     return matchesSearch && matchesTier;
   });
 
-  const totalARR = customers.reduce((acc, c) => acc + c.mrr * 12, 0);
+  // ARR comes from the platform KPI endpoint, which derives it from real plan
+  // prices, rather than being summed from per-row fields the API does not return.
+  // The endpoint returns whole dollars; formatCurrency expects cents.
+  const totalARR = (kpis?.arr ?? 0) * 100;
 
-  const handleRegenerateKey = (id: string) => {
-    const newKey = `cg_live_${Math.random().toString(36).substring(2, 12)}${Math.random().toString(36).substring(2, 12)}`;
-    setCustomers((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, apiKey: newKey } : c))
-    );
-    if (selectedCustomer && selectedCustomer.id === id) {
-      setSelectedCustomer((prev) => (prev ? { ...prev, apiKey: newKey } : null));
-    }
-    toast.success('Regenerated live API key');
+  const handleRegenerateKey = (_id: string) => {
+    // No endpoint exists for rotating a customer's API key. This previously
+    // generated a random string client-side and reported success, which would
+    // have left an operator believing a key had been rotated when it had not.
+    toast.error('API key rotation is not available yet', {
+      description: 'The control plane does not expose a key-rotation endpoint.'
+    });
   };
 
-  const handleToggleStatus = (id: string) => {
-    setCustomers((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          const nextStatus = c.status === 'ACTIVE' ? 'DELINQUENT' : 'ACTIVE';
-          toast.success(`Account status changed to ${nextStatus}`);
-          return { ...c, status: nextStatus };
-        }
-        return c;
-      })
-    );
+  const handleToggleStatus = async (id: string) => {
+    const customer = customers.find((c) => c.id === id);
+    if (!customer) return;
+
+    const suspending = customer.status === 'ACTIVE';
+    try {
+      if (suspending) {
+        await apiClient.suspendCustomer(id, 'Suspended from admin console');
+      } else {
+        await apiClient.reactivateCustomer(id);
+      }
+      toast.success(`Account ${suspending ? 'suspended' : 'reactivated'}`);
+      customersResource.reload();
+      dashboard.reload();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Could not change the account status.';
+      toast.error('Update failed', { description: message });
+    }
   };
 
   return (
@@ -223,23 +134,23 @@ export default function AdminCrmPage() {
             <Building2 className="w-3.5 h-3.5 text-accent" />
           </div>
           <div className="text-2xl font-bold text-foreground">
-            {customers.length} Accounts
+            {kpis?.totalCustomers ?? customers.length} Accounts
           </div>
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <span>100% SLA uptime</span>
+            <span>{kpis?.activeSubscribers ?? 0} active subscribers</span>
           </div>
         </Card>
 
         <Card className="p-4 space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="font-medium">Total Monthly AI Reviews</span>
+            <span className="font-medium">Trial Subscribers</span>
             <Activity className="w-3.5 h-3.5 text-primary" />
           </div>
           <div className="text-2xl font-bold text-foreground">
-            {customers.reduce((acc, c) => acc + c.monthlyReviews, 0).toLocaleString()}
+            {(kpis?.trialSubscribers ?? 0).toLocaleString()}
           </div>
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
-            <span>Gemini 3.7 Flash Pool</span>
+            <span>{kpis?.totalUsers ?? 0} users across {kpis?.totalOrganizations ?? 0} orgs</span>
           </div>
         </Card>
 
@@ -249,10 +160,10 @@ export default function AdminCrmPage() {
             <ShieldAlert className="w-3.5 h-3.5 text-destructive" />
           </div>
           <div className="text-2xl font-bold text-destructive">
-            {customers.filter((c) => c.status === 'DELINQUENT').length} Delinquent
+            {customers.filter((c) => c.status !== 'ACTIVE').length} Suspended
           </div>
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <span>Automated dunning active</span>
+            <span>{kpis?.churnRate ?? '0.0'}% churn rate</span>
           </div>
         </Card>
       </div>
@@ -294,9 +205,9 @@ export default function AdminCrmPage() {
             <thead>
               <tr className="border-b border-border bg-muted/30 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                 <th className="py-2.5 px-4">Organization & Owner</th>
-                <th className="py-2.5 px-4">Tier & MRR</th>
-                <th className="py-2.5 px-4">Seats Allocated</th>
-                <th className="py-2.5 px-4">Monthly Reviews</th>
+                <th className="py-2.5 px-4">Plan</th>
+                <th className="py-2.5 px-4">Account Type</th>
+                <th className="py-2.5 px-4">Subscription</th>
                 <th className="py-2.5 px-4">Status</th>
                 <th className="py-2.5 px-4 text-right">Actions</th>
               </tr>
@@ -313,42 +224,36 @@ export default function AdminCrmPage() {
                       {cust.name}
                     </div>
                     <div className="text-[11px] text-muted-foreground font-mono">
-                      {cust.domain} • {cust.ownerEmail}
+                      {cust.primaryUser?.email ?? cust.email}
                     </div>
                   </td>
 
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1.5">
                       <Badge
-                        variant={cust.tier === 'ENTERPRISE' ? 'primary' : cust.tier === 'PRO' ? 'secondary' : 'neutral'}
+                        variant={
+                          cust.currentPlan?.tier === 'ORGANIZATION'
+                            ? 'primary'
+                            : cust.currentPlan?.tier === 'PRO'
+                              ? 'secondary'
+                              : 'neutral'
+                        }
                         size="sm"
                       >
-                        {cust.tier}
+                        {cust.currentPlan?.tier ?? 'BASIC'}
                       </Badge>
                       <span className="font-mono text-foreground font-medium">
-                        {formatCurrency(cust.mrr)}/mo
+                        {cust.currentPlan?.name ?? 'Basic'}
                       </span>
                     </div>
                   </td>
 
                   <td className="py-3 px-4 font-mono text-[11px]">
-                    <div className="text-foreground">
-                      {cust.seatsUsed} / {cust.seatsTotal} seats
-                    </div>
-                    <Progress
-                      value={(cust.seatsUsed / cust.seatsTotal) * 100}
-                      size="sm"
-                      className="w-24 mt-1"
-                    />
+                    <div className="text-foreground">{cust.type ?? 'INDIVIDUAL'}</div>
                   </td>
 
                   <td className="py-3 px-4 font-mono text-[11px]">
-                    <div className="text-foreground">
-                      {cust.monthlyReviews} / {cust.quotaLimit}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">
-                      {Math.round((cust.monthlyReviews / cust.quotaLimit) * 100)}% quota
-                    </span>
+                    <div className="text-foreground">{cust.subscriptionStatus ?? '—'}</div>
                   </td>
 
                   <td className="py-3 px-4">
@@ -400,7 +305,9 @@ export default function AdminCrmPage() {
                   <span className="text-xs text-muted-foreground font-mono">{selectedCustomer.id}</span>
                 </div>
                 <h2 className="text-lg font-bold text-foreground mt-1">{selectedCustomer.name}</h2>
-                <p className="text-xs text-muted-foreground">{selectedCustomer.ownerEmail}</p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedCustomer.primaryUser?.email ?? selectedCustomer.email}
+                </p>
               </div>
 
               <button
@@ -449,60 +356,27 @@ export default function AdminCrmPage() {
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-bold text-foreground">{selectedCustomer.tier} PLAN</div>
-                  <div className="text-xs text-muted-foreground">Billing: Monthly recurring</div>
+                  <div className="text-sm font-bold text-foreground">
+                    {selectedCustomer.currentPlan?.name ?? 'Basic'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Subscription: {selectedCustomer.subscriptionStatus ?? 'UNKNOWN'}
+                  </div>
                 </div>
-                <div className="text-lg font-bold text-primary">
-                  {formatCurrency(selectedCustomer.mrr)}/mo
-                </div>
+                <Badge variant="secondary" size="sm">
+                  {selectedCustomer.currentPlan?.tier ?? 'BASIC'}
+                </Badge>
               </div>
             </Card>
 
-            {/* Live API Key Management */}
-            <Card className="p-4 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5 text-warning" /> Live API Key
-                </span>
-                <button
-                  onClick={() => handleRegenerateKey(selectedCustomer.id)}
-                  className="text-[11px] font-mono text-primary hover:underline"
-                >
-                  Regenerate
-                </button>
-              </div>
-              <div className="p-2 rounded bg-black/40 border border-border font-mono text-xs text-zinc-300 break-all select-all">
-                {selectedCustomer.apiKey}
-              </div>
-            </Card>
-
-            {/* Quota & Seat Consumption */}
-            <Card className="p-4 space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Resource Utilization
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs font-mono">
-                  <span>Seats Assigned</span>
-                  <span>{selectedCustomer.seatsUsed} / {selectedCustomer.seatsTotal}</span>
-                </div>
-                <Progress value={(selectedCustomer.seatsUsed / selectedCustomer.seatsTotal) * 100} size="sm" />
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs font-mono">
-                  <span>Monthly Reviews</span>
-                  <span>{selectedCustomer.monthlyReviews} / {selectedCustomer.quotaLimit}</span>
-                </div>
-                <Progress value={(selectedCustomer.monthlyReviews / selectedCustomer.quotaLimit) * 100} size="sm" />
-              </div>
-            </Card>
+            {/* Per-customer seat and review consumption is not exposed by
+                /admin/customers. Rather than render zeros that look like real
+                utilisation, the panel links to the account instead. */}
 
             {/* Metadata Footer */}
             <div className="text-[11px] text-muted-foreground font-mono space-y-1 pt-2 border-t border-border/40">
-              <div>Tenant Created: {formatDateTime(selectedCustomer.joinedAt)}</div>
-              <div>Primary Domain: {selectedCustomer.domain}</div>
+              <div>Tenant Created: {formatDateTime(selectedCustomer.createdAt)}</div>
+              <div>Account Type: {selectedCustomer.type ?? 'INDIVIDUAL'}</div>
             </div>
           </div>
         </div>
