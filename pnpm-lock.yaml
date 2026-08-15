@@ -249,6 +249,9 @@ importers:
       '@codeguard/logger':
         specifier: workspace:*
         version: link:../../packages/logger
+      '@codeguard/policy-engine':
+        specifier: workspace:*
+        version: link:../../packages/policy-engine
       '@codeguard/queue':
         specifier: workspace:*
         version: link:../../packages/queue

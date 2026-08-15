@@ -16,6 +16,7 @@
     "@codeguard/config": "workspace:*",
     "@codeguard/database": "workspace:*",
     "@codeguard/github": "workspace:*",
+    "@codeguard/policy-engine": "workspace:*",
     "@codeguard/logger": "workspace:*",
     "@codeguard/queue": "workspace:*",
     "@codeguard/types": "workspace:*",

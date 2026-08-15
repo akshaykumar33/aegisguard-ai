@@ -250,3 +250,94 @@ export class EntitlementEngine {
 }
 
 export const entitlementEngine = new EntitlementEngine();
+
+/**
+ * Outcome of the pre-review entitlement check.
+ *
+ * `reason` is written for a developer reading a GitHub check run, so it says what
+ * to do next rather than restating the failure.
+ */
+export interface ReviewAdmission {
+  allowed: boolean;
+  customerId?: string;
+  reason?: string;
+  featureCode?: string;
+  current?: number;
+  limit?: number;
+}
+
+/**
+ * Map a review-pipeline organization to the billable customer that owns it.
+ *
+ * The engine works in organizationId and the entitlement layer works in
+ * customerId; nothing previously bridged the two, which is why quota checks had
+ * no callers and cloud reviews were never metered.
+ */
+export async function resolveCustomerForOrganization(organizationId: string): Promise<string | null> {
+  const [customer] = await db
+    .select({ id: customers.id })
+    .from(customers)
+    .where(eq(customers.organizationId, organizationId))
+    .limit(1);
+
+  return customer?.id ?? null;
+}
+
+/**
+ * Decide whether an organization may consume a cloud PR review right now.
+ *
+ * Checks plan entitlement first, then remaining quota. Callers should surface
+ * `reason` to the user rather than dropping the event silently.
+ */
+export async function canRunCloudReview(
+  organizationId: string,
+  deps: {
+    resolveCustomer?: (orgId: string) => Promise<string | null>;
+    engine?: EntitlementEngine;
+  } = {}
+): Promise<ReviewAdmission> {
+  const resolveCustomer = deps.resolveCustomer ?? resolveCustomerForOrganization;
+  const engine = deps.engine ?? entitlementEngine;
+  const customerId = await resolveCustomer(organizationId);
+
+  if (!customerId) {
+    return {
+      allowed: false,
+      reason:
+        'No billing account is linked to this organization. Connect the repository from the CodeGuard dashboard to enable automated reviews.'
+    };
+  }
+
+  const entitlements = await engine.getCustomerEntitlements(customerId);
+
+  if (entitlements.status !== 'ACTIVE' && entitlements.status !== 'TRIAL') {
+    return {
+      allowed: false,
+      customerId,
+      reason: `Subscription is ${entitlements.status.toLowerCase()}. Reactivate the plan to resume automated reviews.`
+    };
+  }
+
+  if (!(await engine.has(customerId, 'AUTOMATED_PR_REVIEW'))) {
+    return {
+      allowed: false,
+      customerId,
+      featureCode: 'AUTOMATED_PR_REVIEW',
+      reason: `Automated pull request review is not included in the ${entitlements.planTier} plan. Upgrade to Pro to enable cloud reviews.`
+    };
+  }
+
+  const quota = await engine.canConsume(customerId, 'MONTHLY_AI_REVIEWS', 1);
+  if (!quota.allowed) {
+    return {
+      allowed: false,
+      customerId,
+      featureCode: 'MONTHLY_AI_REVIEWS',
+      current: quota.current,
+      limit: quota.limit,
+      reason: `Monthly AI review quota exhausted (${quota.current}/${quota.limit}). The quota resets at the start of next month, or you can upgrade for a higher limit.`
+    };
+  }
+
+  return { allowed: true, customerId, current: quota.current, limit: quota.limit };
+}
