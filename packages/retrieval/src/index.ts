@@ -1,4 +1,5 @@
-import type { CodeGraphStore, GraphNode } from '@codeguard/code-graph';
+import type { CodeGraphStore, GraphNode, BlastRadiusReport } from '@codeguard/code-graph';
+import { SmartContextCompactor, BlastRadiusAnalyzer } from '@codeguard/code-graph';
 import type { ExtractedSymbol } from '@codeguard/code-parser';
 import type { Finding, Policy } from '@codeguard/types';
 
@@ -9,29 +10,34 @@ export interface AssembledReviewContext {
     callers: { target: string; callers: GraphNode[] }[];
     callees: { source: string; callees: GraphNode[] }[];
   };
+  blastRadiusReport?: BlastRadiusReport;
   historicalFindings: Finding[];
   activePolicies: Policy[];
   formattedPromptContext: string;
+  estimatedTokens: number;
 }
 
 export class HybridRetriever {
   /**
-   * Assemble structured review context for AI reviewer
+   * Assemble structured review context for AI reviewer with token-budgeted smart compaction
    */
   static assembleContext(
     changedFiles: { path: string; status: string; additions: number; deletions: number }[],
     changedSymbols: ExtractedSymbol[],
     graphStore: CodeGraphStore,
     activePolicies: Policy[],
-    historicalFindings: Finding[] = []
+    historicalFindings: Finding[] = [],
+    maxTokens: number = 3000
   ): AssembledReviewContext {
     const callersContext: { target: string; callers: GraphNode[] }[] = [];
     const calleesContext: { source: string; callees: GraphNode[] }[] = [];
 
-    // Traverse call graph for changed symbols
+    // Collect changed symbol node IDs from the store
+    const changedSymbolIds: string[] = [];
     for (const sym of changedSymbols) {
       const nodes = graphStore.findNodesByName(sym.name);
       for (const node of nodes) {
+        changedSymbolIds.push(node.id);
         const callers = graphStore.findCallers(node.id).map((c) => c.caller);
         const callees = graphStore.findCallees(node.id).map((c) => c.callee);
 
@@ -44,7 +50,19 @@ export class HybridRetriever {
       }
     }
 
-    // Build structured markdown representation for LLM prompt
+    // 1. Run Blast Radius & Graph Compactor
+    const compactor = new SmartContextCompactor(graphStore);
+    const analyzer = new BlastRadiusAnalyzer(graphStore);
+    const blastRadiusReport = analyzer.analyze(changedSymbolIds);
+    const compactResult = compactor.generatePromptContext(changedSymbolIds, {
+      maxTokens: Math.floor(maxTokens * 0.6), // 60% of budget for code graph context
+      includeSignatures: true,
+      includeDocstrings: true,
+      includeCallChains: true,
+      includeBlastRadius: true
+    });
+
+    // 2. Build structured markdown representation for LLM prompt
     const promptParts: string[] = [];
 
     promptParts.push('### 1. Changed Files:');
@@ -52,25 +70,10 @@ export class HybridRetriever {
       promptParts.push(`- **${f.path}** (${f.status}, +${f.additions}/-${f.deletions})`);
     }
 
-    if (changedSymbols.length > 0) {
-      promptParts.push('\n### 2. Changed Symbols (Functions / Classes / Routes):');
-      for (const s of changedSymbols) {
-        promptParts.push(`- \`${s.kind}\` **${s.name}** in \`${s.filePath}:${s.startLine}-${s.endLine}\` (${s.signature || ''})`);
-      }
-    }
-
-    if (callersContext.length > 0 || calleesContext.length > 0) {
-      promptParts.push('\n### 3. Repository Call Graph Context:');
-      for (const c of callersContext) {
-        promptParts.push(`- **${c.target}** is CALLED BY: ${c.callers.map((k) => `\`${k.name}\` (${k.filePath})`).join(', ')}`);
-      }
-      for (const c of calleesContext) {
-        promptParts.push(`- **${c.source}** CALLS: ${c.callees.map((k) => `\`${k.name}\` (${k.filePath})`).join(', ')}`);
-      }
-    }
+    promptParts.push('\n' + compactResult.formattedContext);
 
     if (activePolicies.length > 0) {
-      promptParts.push('\n### 4. Organization Security & Architecture Policies:');
+      promptParts.push('\n### 3. Organization Security & Architecture Policies:');
       for (const p of activePolicies) {
         promptParts.push(`- **${p.name}**: ${p.description || 'Enforced'}`);
         for (const r of p.rules) {
@@ -80,11 +83,14 @@ export class HybridRetriever {
     }
 
     if (historicalFindings.length > 0) {
-      promptParts.push('\n### 5. Historical Findings on Modified Files:');
+      promptParts.push('\n### 4. Historical Findings on Modified Files:');
       for (const h of historicalFindings.slice(0, 5)) {
         promptParts.push(`- [${h.severity}] ${h.title} in ${h.filePath}:${h.startLine}`);
       }
     }
+
+    const fullPromptContext = promptParts.join('\n');
+    const estimatedTokens = Math.ceil(fullPromptContext.length / 4);
 
     return {
       changedFiles,
@@ -93,9 +99,11 @@ export class HybridRetriever {
         callers: callersContext,
         callees: calleesContext
       },
+      blastRadiusReport,
       historicalFindings,
       activePolicies,
-      formattedPromptContext: promptParts.join('\n')
+      formattedPromptContext: fullPromptContext,
+      estimatedTokens
     };
   }
 }
