@@ -1,0 +1,25 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "composite": false,
+    "rootDir": "./",
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@codeguard/types": ["../packages/types/dist/index.d.ts"],
+      "@codeguard/config": ["../packages/config/dist/index.d.ts"],
+      "@codeguard/logger": ["../packages/logger/dist/index.d.ts"],
+      "@codeguard/github": ["../packages/github/dist/index.d.ts"],
+      "@codeguard/code-graph": ["../packages/code-graph/dist/index.d.ts"],
+      "@codeguard/policy-engine": ["../packages/policy-engine/dist/index.d.ts"],
+      "@codeguard/security-scanner": ["../packages/security-scanner/dist/index.d.ts"],
+      "@codeguard/code-parser": ["../packages/code-parser/dist/index.d.ts"],
+      "@codeguard/retrieval": ["../packages/retrieval/dist/index.d.ts"],
+      "@codeguard/ai-reviewer": ["../packages/ai-reviewer/dist/index.d.ts"],
+      "@codeguard/ai-verifier": ["../packages/ai-verifier/dist/index.d.ts"]
+    }
+  },
+  "include": ["./**/*.ts"]
+}
