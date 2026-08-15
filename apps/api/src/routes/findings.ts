@@ -1,8 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { db, reviewFindings, secretFindings, dependencyFindings, auditLogs } from '@codeguard/database';
-import { eq, desc } from 'drizzle-orm';
-import { authenticateTenant } from '../middleware/tenantAuth.js';
+import { and, eq, desc } from 'drizzle-orm';
+import { authenticateTenant, resolveOrganizationId } from '../middleware/tenantAuth.js';
 
 const dismissSchema = z.object({
   reason: z.string().min(3).max(500)
@@ -10,8 +10,9 @@ const dismissSchema = z.object({
 
 export async function findingRoutes(server: FastifyInstance) {
   // List findings
-  server.get('/findings', { preHandler: [authenticateTenant] }, async (request) => {
+  server.get('/findings', { preHandler: [authenticateTenant] }, async (request, reply) => {
     const query = request.query as {
+      organizationId?: string;
       repositoryId?: string;
       pullRequestId?: string;
       severity?: string;
@@ -19,13 +20,18 @@ export async function findingRoutes(server: FastifyInstance) {
       status?: string;
     };
 
-    let baseQuery = db.select().from(reviewFindings);
+    const targetOrgId = resolveOrganizationId(request, reply, query.organizationId);
+    if (!targetOrgId) return;
+
+    // Always scoped to the caller's organization. The unfiltered branch below
+    // previously returned every tenant's findings.
+    const scope = eq(reviewFindings.organizationId, targetOrgId);
 
     if (query.pullRequestId) {
       const list = await db
         .select()
         .from(reviewFindings)
-        .where(eq(reviewFindings.pullRequestId, query.pullRequestId))
+        .where(and(scope, eq(reviewFindings.pullRequestId, query.pullRequestId)))
         .orderBy(desc(reviewFindings.createdAt));
       return { data: list };
     }
@@ -34,12 +40,17 @@ export async function findingRoutes(server: FastifyInstance) {
       const list = await db
         .select()
         .from(reviewFindings)
-        .where(eq(reviewFindings.repositoryId, query.repositoryId))
+        .where(and(scope, eq(reviewFindings.repositoryId, query.repositoryId)))
         .orderBy(desc(reviewFindings.createdAt));
       return { data: list };
     }
 
-    const list = await baseQuery.orderBy(desc(reviewFindings.createdAt)).limit(100);
+    const list = await db
+      .select()
+      .from(reviewFindings)
+      .where(scope)
+      .orderBy(desc(reviewFindings.createdAt))
+      .limit(100);
     return { data: list };
   });
 
@@ -48,7 +59,14 @@ export async function findingRoutes(server: FastifyInstance) {
     const { id } = request.params as { id: string };
     const body = dismissSchema.parse(request.body);
 
-    const [finding] = await db.select().from(reviewFindings).where(eq(reviewFindings.id, id)).limit(1);
+    const targetOrgId = resolveOrganizationId(request, reply);
+    if (!targetOrgId) return;
+
+    const [finding] = await db
+      .select()
+      .from(reviewFindings)
+      .where(and(eq(reviewFindings.id, id), eq(reviewFindings.organizationId, targetOrgId)))
+      .limit(1);
     if (!finding) {
       return reply.status(404).send({ error: 'Finding not found' });
     }

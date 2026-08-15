@@ -1,8 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { db, repositories, auditLogs } from '@codeguard/database';
-import { eq } from 'drizzle-orm';
-import { authenticateTenant } from '../middleware/tenantAuth.js';
+import { and, eq } from 'drizzle-orm';
+import { authenticateTenant, resolveOrganizationId } from '../middleware/tenantAuth.js';
 import { enqueueIndexJob } from '@codeguard/queue';
 
 const connectRepoSchema = z.object({
@@ -19,12 +19,12 @@ const connectRepoSchema = z.object({
 
 export async function repositoryRoutes(server: FastifyInstance) {
   // List repositories with optional organizationId filter
-  server.get('/repositories', { preHandler: [authenticateTenant] }, async (request) => {
+  server.get('/repositories', { preHandler: [authenticateTenant] }, async (request, reply) => {
     const queryOrgId = (request.query as { organizationId?: string })?.organizationId;
+    const targetOrgId = resolveOrganizationId(request, reply, queryOrgId);
+    if (!targetOrgId) return;
 
-    const list = queryOrgId
-      ? await db.select().from(repositories).where(eq(repositories.organizationId, queryOrgId))
-      : await db.select().from(repositories);
+    const list = await db.select().from(repositories).where(eq(repositories.organizationId, targetOrgId));
 
     return { data: list };
   });
@@ -32,10 +32,12 @@ export async function repositoryRoutes(server: FastifyInstance) {
   // Connect/register a new repository
   server.post('/repositories', { preHandler: [authenticateTenant] }, async (request, reply) => {
     const body = connectRepoSchema.parse(request.body);
+    const targetOrgId = resolveOrganizationId(request, reply, body.organizationId);
+    if (!targetOrgId) return;
 
     const [newRepo] = await db
       .insert(repositories)
-      .values(body)
+      .values({ ...body, organizationId: targetOrgId })
       .returning();
 
     // Trigger initial indexing job
@@ -63,7 +65,16 @@ export async function repositoryRoutes(server: FastifyInstance) {
   // Get repository details
   server.get('/repositories/:id', { preHandler: [authenticateTenant] }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const [repo] = await db.select().from(repositories).where(eq(repositories.id, id)).limit(1);
+    const targetOrgId = resolveOrganizationId(request, reply);
+    if (!targetOrgId) return;
+
+    // Scoped by organization as well as id: looking one up by primary key alone
+    // let any authenticated caller read another tenant's repository.
+    const [repo] = await db
+      .select()
+      .from(repositories)
+      .where(and(eq(repositories.id, id), eq(repositories.organizationId, targetOrgId)))
+      .limit(1);
 
     if (!repo) {
       return reply.status(404).send({ error: 'Repository not found' });

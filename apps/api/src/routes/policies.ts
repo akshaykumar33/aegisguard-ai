@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { db, policies, policyRules, branchPolicies, auditLogs } from '@codeguard/database';
 import { eq } from 'drizzle-orm';
-import { authenticateTenant } from '../middleware/tenantAuth.js';
+import { authenticateTenant, resolveOrganizationId } from '../middleware/tenantAuth.js';
 import { PolicyEngine, DEFAULT_PROTECTED_BRANCH_PATTERNS } from '@codeguard/policy-engine';
 import type { Policy, BranchProtectionRule } from '@codeguard/types';
 
@@ -36,14 +36,12 @@ const createPolicySchema = z.object({
 
 export async function policyRoutes(server: FastifyInstance) {
   // List policies
-  server.get('/policies', { preHandler: [authenticateTenant] }, async (request) => {
-    const orgId = request.tenant?.organizationId;
+  server.get('/policies', { preHandler: [authenticateTenant] }, async (request, reply) => {
     const queryOrgId = (request.query as { organizationId?: string })?.organizationId;
-    const targetOrgId = queryOrgId || orgId;
+    const targetOrgId = resolveOrganizationId(request, reply, queryOrgId);
+    if (!targetOrgId) return;
 
-    const list = targetOrgId
-      ? await db.select().from(policies).where(eq(policies.organizationId, targetOrgId))
-      : await db.select().from(policies);
+    const list = await db.select().from(policies).where(eq(policies.organizationId, targetOrgId));
 
     // Fetch rules for each policy
     const result = await Promise.all(
@@ -77,9 +75,12 @@ export async function policyRoutes(server: FastifyInstance) {
   });
 
   // CLI Policy Sync: Downloads cryptographically signed organization policy
-  server.get('/cli/sync', async (request) => {
+  server.get('/cli/sync', { preHandler: [authenticateTenant] }, async (request, reply) => {
     const queryOrgId = (request.query as { organizationId?: string })?.organizationId;
-    const orgId = queryOrgId || '00000000-0000-0000-0000-000000000001';
+    // Previously unauthenticated and defaulted to a hardcoded organization id,
+    // so it served signed branch policy to anyone who asked.
+    const orgId = resolveOrganizationId(request, reply, queryOrgId);
+    if (!orgId) return;
 
     const defaultBranchPolicies: BranchProtectionRule[] = [
       {
@@ -194,11 +195,13 @@ export async function policyRoutes(server: FastifyInstance) {
   // Create policy
   server.post('/policies', { preHandler: [authenticateTenant] }, async (request, reply) => {
     const body = createPolicySchema.parse(request.body);
+    const targetOrgId = resolveOrganizationId(request, reply, body.organizationId);
+    if (!targetOrgId) return;
 
     const [newPolicy] = await db
       .insert(policies)
       .values({
-        organizationId: body.organizationId,
+        organizationId: targetOrgId,
         repositoryId: body.repositoryId,
         name: body.name,
         description: body.description,
