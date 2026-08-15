@@ -1,0 +1,381 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* ==========================================================================
+   SHADCN / LINEAR / VERCEL DESIGN SYSTEM TOKENS
+   ========================================================================== */
+
+:root {
+  --radius: 0.75rem;
+}
+
+/* 1. DARK OBSIDIAN (Default Linear / Vercel Dark Mode) */
+:root,
+html[data-theme="dark"] {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+
+  --card: 240 10% 4.9%;
+  --card-hover: 240 6% 8%;
+  --card-elevated: 240 6% 10%;
+  --card-foreground: 0 0% 98%;
+
+  --popover: 240 10% 4.9%;
+  --popover-foreground: 0 0% 98%;
+
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --primary-hover: 221.2 83.2% 45%;
+  --primary-light: 221.2 83.2% 53.3% / 0.15;
+  --primary-glow: 221.2 83.2% 53.3% / 0.35;
+
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+
+  --accent: 188.7 94.5% 42.7%;
+  --accent-foreground: 0 0% 98%;
+  --accent-light: 188.7 94.5% 42.7% / 0.15;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --destructive-light: 0 84.2% 60.2% / 0.15;
+
+  --success: 142.1 76.2% 36.3%;
+  --success-foreground: 355.7 100% 97.3%;
+  --success-light: 142.1 76.2% 36.3% / 0.15;
+
+  --warning: 38 92% 50%;
+  --warning-foreground: 48 96% 89%;
+  --warning-light: 38 92% 50% / 0.15;
+
+  --border: 240 3.7% 15.9%;
+  --border-subtle: 240 3.7% 12%;
+  --border-focus: 221.2 83.2% 53.3%;
+
+  --input: 240 3.7% 11%;
+  --ring: 221.2 83.2% 53.3%;
+}
+
+/* 2. STRIPE PEARL (Clean Crisp Light Mode) */
+html[data-theme="stripe"] {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+
+  --card: 0 0% 100%;
+  --card-hover: 240 4.8% 96.5%;
+  --card-elevated: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --primary-hover: 221.2 83.2% 45%;
+  --primary-light: 221.2 83.2% 53.3% / 0.1;
+  --primary-glow: 221.2 83.2% 53.3% / 0.2;
+
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+
+  --accent: 199.4 95.5% 73.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --accent-light: 199.4 95.5% 73.9% / 0.1;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --destructive-light: 0 84.2% 60.2% / 0.1;
+
+  --success: 142.1 76.2% 36.3%;
+  --success-foreground: 355.7 100% 97.3%;
+  --success-light: 142.1 76.2% 36.3% / 0.1;
+
+  --warning: 38 92% 50%;
+  --warning-foreground: 48 96% 89%;
+  --warning-light: 38 92% 50% / 0.1;
+
+  --border: 240 5.9% 90%;
+  --border-subtle: 240 5.9% 93%;
+  --border-focus: 221.2 83.2% 53.3%;
+
+  --input: 240 5.9% 95%;
+  --ring: 221.2 83.2% 53.3%;
+}
+
+/* 3. AMOLED MIDNIGHT (OLED Pure Black) */
+html[data-theme="amoled"] {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+
+  --card: 0 0% 3%;
+  --card-hover: 0 0% 7%;
+  --card-elevated: 0 0% 9%;
+  --card-foreground: 0 0% 100%;
+
+  --popover: 0 0% 4%;
+  --popover-foreground: 0 0% 100%;
+
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: 221.2 83.2% 45%;
+  --primary-light: 221.2 83.2% 53.3% / 0.2;
+  --primary-glow: 221.2 83.2% 53.3% / 0.45;
+
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 65%;
+
+  --accent: 188.7 94.5% 42.7%;
+  --accent-foreground: 0 0% 100%;
+  --accent-light: 188.7 94.5% 42.7% / 0.2;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-light: 0 84.2% 60.2% / 0.2;
+
+  --success: 142.1 76.2% 36.3%;
+  --success-foreground: 0 0% 100%;
+  --success-light: 142.1 76.2% 36.3% / 0.2;
+
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+  --warning-light: 38 92% 50% / 0.2;
+
+  --border: 0 0% 14%;
+  --border-subtle: 0 0% 10%;
+  --border-focus: 221.2 83.2% 53.3%;
+
+  --input: 0 0% 6%;
+  --ring: 221.2 83.2% 53.3%;
+}
+
+/* 4. OBSIDIAN PURPLE (AI Neon) */
+html[data-theme="purple"] {
+  --background: 260 50% 4%;
+  --foreground: 260 20% 98%;
+
+  --card: 260 45% 6%;
+  --card-hover: 260 40% 10%;
+  --card-elevated: 260 38% 13%;
+  --card-foreground: 260 20% 98%;
+
+  --primary: 271 91% 65%;
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: 271 91% 55%;
+  --primary-light: 271 91% 65% / 0.18;
+  --primary-glow: 271 91% 65% / 0.4;
+
+  --secondary: 260 30% 18%;
+  --secondary-foreground: 260 20% 98%;
+
+  --muted: 260 30% 18%;
+  --muted-foreground: 260 20% 65%;
+
+  --accent: 326 100% 64%;
+  --accent-foreground: 0 0% 100%;
+  --accent-light: 326 100% 64% / 0.18;
+
+  --border: 260 30% 18%;
+  --border-subtle: 260 30% 12%;
+  --border-focus: 271 91% 65%;
+
+  --input: 260 40% 8%;
+  --ring: 271 91% 65%;
+}
+
+/* 5. EMERALD CYBER */
+html[data-theme="emerald"] {
+  --background: 155 50% 3%;
+  --foreground: 155 20% 98%;
+
+  --card: 155 45% 5%;
+  --card-hover: 155 40% 9%;
+  --card-elevated: 155 38% 12%;
+  --card-foreground: 155 20% 98%;
+
+  --primary: 158 82% 43%;
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: 158 82% 35%;
+  --primary-light: 158 82% 43% / 0.18;
+  --primary-glow: 158 82% 43% / 0.4;
+
+  --secondary: 155 30% 16%;
+  --secondary-foreground: 155 20% 98%;
+
+  --muted: 155 30% 16%;
+  --muted-foreground: 155 20% 65%;
+
+  --accent: 174 88% 46%;
+  --accent-foreground: 0 0% 100%;
+  --accent-light: 174 88% 46% / 0.18;
+
+  --border: 155 30% 16%;
+  --border-subtle: 155 30% 11%;
+  --border-focus: 158 82% 43%;
+
+  --input: 155 40% 7%;
+  --ring: 158 82% 43%;
+}
+
+/* DYNAMIC ACCENT SWITCHER */
+html[data-accent="cyan"] {
+  --primary: 188.7 94.5% 42.7%;
+  --primary-hover: 188.7 94.5% 35%;
+  --primary-light: 188.7 94.5% 42.7% / 0.15;
+  --primary-glow: 188.7 94.5% 42.7% / 0.35;
+  --ring: 188.7 94.5% 42.7%;
+}
+html[data-accent="emerald"] {
+  --primary: 158 82% 43%;
+  --primary-hover: 158 82% 35%;
+  --primary-light: 158 82% 43% / 0.15;
+  --primary-glow: 158 82% 43% / 0.35;
+  --ring: 158 82% 43%;
+}
+html[data-accent="violet"] {
+  --primary: 263.4 70% 50.4%;
+  --primary-hover: 263.4 70% 42%;
+  --primary-light: 263.4 70% 50.4% / 0.15;
+  --primary-glow: 263.4 70% 50.4% / 0.35;
+  --ring: 263.4 70% 50.4%;
+}
+html[data-accent="rose"] {
+  --primary: 346.8 77.2% 49.8%;
+  --primary-hover: 346.8 77.2% 42%;
+  --primary-light: 346.8 77.2% 49.8% / 0.15;
+  --primary-glow: 346.8 77.2% 49.8% / 0.35;
+  --ring: 346.8 77.2% 49.8%;
+}
+html[data-accent="amber"] {
+  --primary: 38 92% 50%;
+  --primary-hover: 38 92% 42%;
+  --primary-light: 38 92% 50% / 0.15;
+  --primary-glow: 38 92% 50% / 0.35;
+  --ring: 38 92% 50%;
+}
+
+/* ==========================================================================
+   GLOBAL RESET & TYPOGRAPHY SETTINGS
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  letter-spacing: -0.012em;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-image: 
+    radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.08) 0%, transparent 60%),
+    radial-gradient(hsl(var(--border) / 0.4) 1px, transparent 1px);
+  background-size: 100% 100%, 24px 24px;
+  background-position: top center, center top;
+}
+
+/* Subtle, refined scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Linear-grade card reflection shine */
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+.card-shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), transparent);
+  pointer-events: none;
+}
+
+/* Authentic Raycast / Warp Terminal */
+.terminal-window {
+  background: hsl(var(--card-elevated));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  font-family: var(--font-geist-mono), monospace;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+/* cmdk styling */
+[cmdk-root] {
+  max-width: 640px;
+  width: 100%;
+  background: hsl(var(--card-elevated));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+[cmdk-input] {
+  width: 100%;
+  padding: 16px 20px;
+  font-size: 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid hsl(var(--border-subtle));
+  color: hsl(var(--foreground));
+  outline: none;
+}
+
+[cmdk-item] {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.12s ease;
+  margin: 2px 6px;
+}
+
+[cmdk-item][data-selected="true"] {
+  background: hsl(var(--primary-light));
+  color: hsl(var(--foreground));
+  font-weight: 500;
+}
+
+[cmdk-group-heading] {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+  padding: 10px 12px 4px;
+}
