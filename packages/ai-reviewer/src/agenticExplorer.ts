@@ -1,5 +1,5 @@
-import type { GraphNode } from '@codeguard/code-graph';
-import { CodeGraphStore } from '@codeguard/code-graph';
+import type { GraphNode, BlastRadiusReport } from '@codeguard/code-graph';
+import { CodeGraphStore, BlastRadiusAnalyzer, SmartContextCompactor } from '@codeguard/code-graph';
 import { logger } from '@codeguard/logger';
 
 export interface CodebaseToolDefinition {
@@ -19,10 +19,14 @@ export interface CodeContextResult {
  */
 export class AgenticContextExplorer {
   private graphStore: CodeGraphStore;
+  private blastRadiusAnalyzer: BlastRadiusAnalyzer;
+  private contextCompactor: SmartContextCompactor;
   private repositoryMemory: Map<string, string>;
 
   constructor(graphStore?: CodeGraphStore) {
     this.graphStore = graphStore || new CodeGraphStore();
+    this.blastRadiusAnalyzer = new BlastRadiusAnalyzer(this.graphStore);
+    this.contextCompactor = new SmartContextCompactor(this.graphStore);
     this.repositoryMemory = new Map();
   }
 
@@ -54,21 +58,33 @@ export class AgenticContextExplorer {
         }
       },
       {
+        name: 'get_symbol_blast_radius',
+        description: 'Calculates the full blast radius, transitive callers, and risk score for a symbol or file change.',
+        parameters: {
+          type: 'object',
+          properties: {
+            symbolName: { type: 'string', description: 'Name of the symbol to evaluate blast radius for' }
+          },
+          required: ['symbolName']
+        }
+      },
+      {
+        name: 'find_impacted_tests',
+        description: 'Finds all unit and integration test files that cover or call modified symbols.',
+        parameters: {
+          type: 'object',
+          properties: {
+            symbolName: { type: 'string', description: 'Name of the symbol to find tests for' }
+          },
+          required: ['symbolName']
+        }
+      },
+      {
         name: 'detect_architectural_layer_violations',
         description: 'Checks if changes bypass service layers or violate clean architecture boundaries.',
         parameters: {
           type: 'object',
           properties: {}
-        }
-      },
-      {
-        name: 'inspect_package_dependencies',
-        description: 'Inspects package.json dependencies for known vulnerabilities and version updates.',
-        parameters: {
-          type: 'object',
-          properties: {
-            packageName: { type: 'string', description: 'Package name to check' }
-          }
         }
       }
     ];
@@ -91,7 +107,8 @@ export class AgenticContextExplorer {
             kind: n.kind,
             filePath: n.filePath,
             lines: `${n.startLine}-${n.endLine}`,
-            signature: n.signature
+            signature: n.signature,
+            docstring: n.docstring
           }))
         };
       }
@@ -109,6 +126,40 @@ export class AgenticContextExplorer {
             filePath: c.filePath,
             lines: `${c.startLine}-${c.endLine}`
           }))
+        };
+      }
+
+      case 'get_symbol_blast_radius': {
+        const nodes: GraphNode[] = this.graphStore.findNodesByName(args.symbolName);
+        const nodeIds = nodes.map((n) => n.id);
+        const report: BlastRadiusReport = this.blastRadiusAnalyzer.analyze(nodeIds);
+        return {
+          tool: name,
+          query: args.symbolName,
+          result: {
+            riskScore: report.riskScore,
+            totalAffectedNodes: report.totalAffectedNodes,
+            dependencyDepth: report.dependencyDepth,
+            riskFactors: report.riskFactors,
+            directCallers: report.directCallers.map((c) => `${c.name} (${c.filePath}:${c.startLine})`),
+            transitiveCallers: report.transitiveCallers.map((c) => `${c.name} (${c.filePath}:${c.startLine})`),
+            impactedTestFiles: report.impactedTestFiles
+          }
+        };
+      }
+
+      case 'find_impacted_tests': {
+        const nodes: GraphNode[] = this.graphStore.findNodesByName(args.symbolName);
+        const nodeIds = nodes.map((n) => n.id);
+        const report: BlastRadiusReport = this.blastRadiusAnalyzer.analyze(nodeIds);
+        return {
+          tool: name,
+          query: args.symbolName,
+          result: {
+            symbol: args.symbolName,
+            impactedTestFiles: report.impactedTestFiles,
+            hasCoverage: report.impactedTestFiles.length > 0
+          }
         };
       }
 
