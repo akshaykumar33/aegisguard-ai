@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { db, organizations, memberships, auditLogs } from '@codeguard/database';
 import { eq } from 'drizzle-orm';
-import { authenticateTenant } from '../middleware/tenantAuth.js';
+import { authenticateTenant, resolveOrganizationId } from '../middleware/tenantAuth.js';
 
 const createOrgSchema = z.object({
   name: z.string().min(2).max(100),
@@ -12,8 +12,15 @@ const createOrgSchema = z.object({
 
 export async function organizationRoutes(server: FastifyInstance) {
   // List organizations
-  server.get('/organizations', { preHandler: [authenticateTenant] }, async () => {
-    const list = await db.select().from(organizations);
+  server.get('/organizations', { preHandler: [authenticateTenant] }, async (request, reply) => {
+    const targetOrgId = resolveOrganizationId(request, reply);
+    if (!targetOrgId) return;
+
+    // Platform staff may enumerate every tenant; everyone else sees only their own.
+    const list = request.auth?.isPlatformAdmin
+      ? await db.select().from(organizations)
+      : await db.select().from(organizations).where(eq(organizations.id, targetOrgId));
+
     return { data: list };
   });
 
@@ -47,7 +54,10 @@ export async function organizationRoutes(server: FastifyInstance) {
   // Get specific organization
   server.get('/organizations/:id', { preHandler: [authenticateTenant] }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const [org] = await db.select().from(organizations).where(eq(organizations.id, id)).limit(1);
+    const targetOrgId = resolveOrganizationId(request, reply, id);
+    if (!targetOrgId) return;
+
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, targetOrgId)).limit(1);
 
     if (!org) {
       return reply.status(404).send({ error: 'Organization not found' });

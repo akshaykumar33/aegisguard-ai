@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { db, emergencyOverrides, auditLogs, repositories } from '@codeguard/database';
 import { eq, and, gt } from 'drizzle-orm';
-import { authenticateTenant } from '../middleware/tenantAuth.js';
+import { authenticateTenant, resolveOrganizationId } from '../middleware/tenantAuth.js';
 
 const requestBreakGlassSchema = z.object({
   organizationId: z.string().uuid(),
@@ -23,11 +23,15 @@ export async function emergencyRoutes(server: FastifyInstance) {
   // 1. Request Break-Glass Emergency Override
   server.post('/emergency/break-glass', { preHandler: [authenticateTenant] }, async (request, reply) => {
     const body = requestBreakGlassSchema.parse(request.body);
+    // Taken from the credential, not the body: this route disables merge gates,
+    // and the body value let a caller authorize an override on any organization.
+    const targetOrgId = resolveOrganizationId(request, reply, body.organizationId);
+    if (!targetOrgId) return;
 
     const [repo] = await db
       .select()
       .from(repositories)
-      .where(and(eq(repositories.id, body.repositoryId), eq(repositories.organizationId, body.organizationId)))
+      .where(and(eq(repositories.id, body.repositoryId), eq(repositories.organizationId, targetOrgId)))
       .limit(1);
 
     if (!repo) {
@@ -39,7 +43,7 @@ export async function emergencyRoutes(server: FastifyInstance) {
     const [override] = await db
       .insert(emergencyOverrides)
       .values({
-        organizationId: body.organizationId,
+        organizationId: targetOrgId,
         repositoryId: body.repositoryId,
         branch: body.branch,
         pullRequestId: body.pullRequestId,
@@ -52,7 +56,7 @@ export async function emergencyRoutes(server: FastifyInstance) {
 
     // Immutable audit log
     await db.insert(auditLogs).values({
-      organizationId: body.organizationId,
+      organizationId: targetOrgId,
       actorId: request.tenant?.userId || 'system',
       actorType: 'ADMIN',
       action: 'EMERGENCY_BREAK_GLASS_REQUESTED',
@@ -73,16 +77,15 @@ export async function emergencyRoutes(server: FastifyInstance) {
   });
 
   // 2. List Active Break-Glass Overrides
-  server.get('/emergency/active', { preHandler: [authenticateTenant] }, async (request) => {
-    const orgId = request.tenant?.organizationId;
+  server.get('/emergency/active', { preHandler: [authenticateTenant] }, async (request, reply) => {
+    const orgId = resolveOrganizationId(request, reply);
+    if (!orgId) return;
     const now = new Date();
 
-    const active = orgId
-      ? await db
-          .select()
-          .from(emergencyOverrides)
-          .where(and(eq(emergencyOverrides.organizationId, orgId), gt(emergencyOverrides.activeUntil, now)))
-      : await db.select().from(emergencyOverrides).where(gt(emergencyOverrides.activeUntil, now));
+    const active = await db
+      .select()
+      .from(emergencyOverrides)
+      .where(and(eq(emergencyOverrides.organizationId, orgId), gt(emergencyOverrides.activeUntil, now)));
 
     return { data: active };
   });
@@ -90,11 +93,13 @@ export async function emergencyRoutes(server: FastifyInstance) {
   // 3. Revoke Break-Glass Override
   server.post('/emergency/revoke', { preHandler: [authenticateTenant] }, async (request, reply) => {
     const body = revokeBreakGlassSchema.parse(request.body);
+    const orgId = resolveOrganizationId(request, reply);
+    if (!orgId) return;
 
     const [updated] = await db
       .update(emergencyOverrides)
       .set({ revokedAt: new Date() })
-      .where(eq(emergencyOverrides.id, body.overrideId))
+      .where(and(eq(emergencyOverrides.id, body.overrideId), eq(emergencyOverrides.organizationId, orgId)))
       .returning();
 
     if (!updated) {

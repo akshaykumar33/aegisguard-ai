@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, text, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, text, boolean, uniqueIndex, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const organizations = pgTable(
@@ -23,6 +23,12 @@ export const users = pgTable(
     email: varchar('email', { length: 255 }).notNull().unique(),
     name: varchar('name', { length: 255 }).notNull(),
     avatarUrl: text('avatar_url'),
+    // PBKDF2 hash in `salt:derivedKey` form (see @codeguard/auth hashPassword).
+    // Nullable: SSO/OAuth users never set one, and such accounts cannot password-login.
+    passwordHash: text('password_hash'),
+    // Platform staff flag. Replaces the previous email-substring check, which let
+    // anyone self-register their way to super-admin.
+    isPlatformAdmin: boolean('is_platform_admin').default(false).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
   },

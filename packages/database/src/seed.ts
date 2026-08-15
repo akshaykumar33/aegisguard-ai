@@ -1,5 +1,6 @@
+import crypto from 'node:crypto';
 import { db } from './client.js';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import {
   organizations,
   users,
@@ -24,9 +25,32 @@ import {
   announcements,
   supportTickets,
   supportMessages,
-  documents
+  documents,
+  pullRequests,
+  reviewRuns,
+  reviewStages,
+  reviewFindings
 } from './schema/index.js';
 import { logger } from '@codeguard/logger';
+
+/** Shared credential for every seeded demo account. Local development only. */
+const DEMO_PASSWORD = 'CodeGuard!2026';
+
+/**
+ * PBKDF2 hash in the `salt:derivedKey` form that @codeguard/auth verifyPassword
+ * expects. Duplicated rather than imported because @codeguard/auth depends on
+ * this package — importing it here would create a dependency cycle. Keep the
+ * parameters below in sync with hashPassword in packages/auth/src/index.ts.
+ */
+function hashDemoPassword(password: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const salt = crypto.randomBytes(16).toString('hex');
+    crypto.pbkdf2(password, salt, 100000, 64, 'sha512', (err, derivedKey) => {
+      if (err) return reject(err);
+      resolve(`${salt}:${derivedKey.toString('hex')}`);
+    });
+  });
+}
 
 export async function seedDatabase() {
   logger.info('🌱 Starting comprehensive database seeding for CodeGuard & Subscriber Platform...');
@@ -350,64 +374,75 @@ export async function seedDatabase() {
     }
 
     // 7. Seed Demo Users
+    //
+    // Every demo account shares DEMO_PASSWORD so /auth/login works out of the box
+    // after seeding. Only superadmin@codeguard.dev carries isPlatformAdmin.
+    const demoPasswordHash = await hashDemoPassword(DEMO_PASSWORD);
+
     let [superAdminUser] = await db
       .insert(users)
       .values({
         email: 'superadmin@codeguard.dev',
         name: 'Sarah Connor (Super Admin)',
-        avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2'
+        avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2',
+        passwordHash: demoPasswordHash,
+        isPlatformAdmin: true
       })
-      .onConflictDoNothing()
+      .onConflictDoUpdate({
+        target: users.email,
+        set: { isPlatformAdmin: true, name: 'Sarah Connor (Super Admin)' }
+      })
       .returning();
-    if (!superAdminUser) {
-      [superAdminUser] = await db.select().from(users).where(eq(users.email, 'superadmin@codeguard.dev')).limit(1);
-    }
 
     let [studentUser] = await db
       .insert(users)
       .values({
         email: 'student@codeguard.dev',
         name: 'Aarav Sharma (Student Dev)',
-        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'
+        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde',
+        passwordHash: demoPasswordHash
       })
-      .onConflictDoNothing()
+      .onConflictDoUpdate({
+        target: users.email,
+        set: { name: 'Aarav Sharma (Student Dev)', avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde' }
+      })
       .returning();
-    if (!studentUser) {
-      [studentUser] = await db.select().from(users).where(eq(users.email, 'student@codeguard.dev')).limit(1);
-    }
 
     let [proUser] = await db
       .insert(users)
       .values({
         email: 'pro@codeguard.dev',
         name: 'Elena Rostova (Staff Engineer)',
-        avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956'
+        avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956',
+        passwordHash: demoPasswordHash
       })
-      .onConflictDoNothing()
+      .onConflictDoUpdate({
+        target: users.email,
+        set: { name: 'Elena Rostova (Staff Engineer)', avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956' }
+      })
       .returning();
-    if (!proUser) {
-      [proUser] = await db.select().from(users).where(eq(users.email, 'pro@codeguard.dev')).limit(1);
-    }
 
     let [orgOwnerUser] = await db
       .insert(users)
       .values({
         email: 'admin@acmepayments.com',
         name: 'Alex Rivera (Security Lead)',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb'
+        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
+        passwordHash: demoPasswordHash
       })
-      .onConflictDoNothing()
+      .onConflictDoUpdate({
+        target: users.email,
+        set: { name: 'Alex Rivera (Security Lead)', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb' }
+      })
       .returning();
-    if (!orgOwnerUser) {
-      [orgOwnerUser] = await db.select().from(users).where(eq(users.email, 'admin@acmepayments.com')).limit(1);
-    }
 
     let [orgMemberUser] = await db
       .insert(users)
       .values({
         email: 'dev1@acmepayments.com',
         name: 'Jordan Lee (Frontend Dev)',
-        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d'
+        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
+        passwordHash: demoPasswordHash
       })
       .onConflictDoNothing()
       .returning();
@@ -429,20 +464,55 @@ export async function seedDatabase() {
       [demoOrg] = await db.select().from(organizations).where(eq(organizations.slug, 'acme-corp')).limit(1);
     }
 
-    if (demoOrg && orgOwnerUser) {
-      await db.insert(memberships).values({
-        organizationId: demoOrg.id,
-        userId: orgOwnerUser.id,
-        role: 'OWNER'
-      }).onConflictDoNothing();
-    }
+    // Seed distinct team members
+    const teamSeeds = [
+      { name: 'Alex Rivera', email: 'admin@acmepayments.com', role: 'OWNER', avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Elena Rostova', email: 'pro@codeguard.dev', role: 'SECURITY_LEAD', avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Marcus Vance', email: 'marcus.vance@acmepayments.com', role: 'ADMIN', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Sarah Chen', email: 'sarah.chen@acmepayments.com', role: 'ADMIN', avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Priya Patel', email: 'priya.patel@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80' },
+      { name: 'David Kim', email: 'david.kim@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Jordan Lee', email: 'dev1@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Rachel Adams', email: 'rachel.adams@acmepayments.com', role: 'SECURITY_LEAD', avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Tomas Novak', email: 'tomas.novak@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Amina Bello', email: 'amina.bello@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Carlos Mendez', email: 'carlos.mendez@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Emily Zhang', email: 'emily.zhang@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Liam O\'Connor', email: 'liam.oconnor@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Sofia Rossi', email: 'sofia.rossi@acmepayments.com', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Aarav Sharma', email: 'student@codeguard.dev', role: 'MEMBER', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Vikram Seth', email: 'superadmin@codeguard.dev', role: 'ADMIN', avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80' }
+    ];
 
-    if (demoOrg && orgMemberUser) {
-      await db.insert(memberships).values({
-        organizationId: demoOrg.id,
-        userId: orgMemberUser.id,
-        role: 'MEMBER'
-      }).onConflictDoNothing();
+    if (demoOrg) {
+      for (const t of teamSeeds) {
+        let [u] = await db.select().from(users).where(eq(users.email, t.email)).limit(1);
+        if (!u) {
+          [u] = await db.insert(users).values({
+            email: t.email,
+            passwordHash: await hashDemoPassword(DEMO_PASSWORD),
+            name: t.name,
+            avatarUrl: t.avatarUrl,
+            isPlatformAdmin: t.email === 'superadmin@codeguard.dev'
+          }).returning();
+        }
+
+        if (u) {
+          const [m] = await db
+            .select()
+            .from(memberships)
+            .where(and(eq(memberships.organizationId, demoOrg.id), eq(memberships.userId, u.id)))
+            .limit(1);
+
+          if (!m) {
+            await db.insert(memberships).values({
+              organizationId: demoOrg.id,
+              userId: u.id,
+              role: t.role as any
+            });
+          }
+        }
+      }
     }
 
     // 9. Seed Demo Customers (Student, Pro, Org)
@@ -507,28 +577,93 @@ export async function seedDatabase() {
       }
     }
 
+    let superAdminCustomer = null;
+    if (superAdminUser && segOrg) {
+      [superAdminCustomer] = await db
+        .insert(customers)
+        .values({
+          type: 'ORGANIZATION',
+          segmentId: segOrg.id,
+          name: 'CodeGuard HQ (Platform Super Admin)',
+          email: 'superadmin@codeguard.dev',
+          profession: 'Platform Operations & Security',
+          organizationId: demoOrg?.id,
+          primaryUserId: superAdminUser.id,
+          status: 'ACTIVE'
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (!superAdminCustomer) {
+        [superAdminCustomer] = await db.select().from(customers).where(eq(customers.email, 'superadmin@codeguard.dev')).limit(1);
+      }
+    }
+
     // 10. Seed Subscriptions
     const oneYearAhead = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
     const oneMonthAhead = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    if (studentCustomer && basicPlan) {
-      const [sub] = await db.insert(subscriptions).values({
-        customerId: studentCustomer.id,
-        planId: basicPlan.id,
-        status: 'ACTIVE',
-        billingInterval: 'MONTHLY',
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: oneYearAhead
-      }).returning();
+    if (superAdminCustomer && orgPlan) {
+      let [sub] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.customerId, superAdminCustomer.id))
+        .limit(1);
 
-      if (sub) {
-        await db.insert(subscriptionHistory).values({
-          subscriptionId: sub.id,
+      if (!sub) {
+        [sub] = await db.insert(subscriptions).values({
+          customerId: superAdminCustomer.id,
+          planId: orgPlan.id,
+          status: 'ACTIVE',
+          billingInterval: 'YEARLY',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: oneYearAhead
+        }).returning();
+
+        if (sub) {
+          await db.insert(subscriptionHistory).values({
+            subscriptionId: sub.id,
+            customerId: superAdminCustomer.id,
+            planId: orgPlan.id,
+            action: 'CREATED',
+            reason: 'Platform super admin provisioned'
+          }).onConflictDoNothing();
+        }
+      }
+
+      await db.insert(usageRecords).values([
+        { customerId: superAdminCustomer.id, featureCode: 'MONTHLY_PR_REVIEWS', periodKey: '2026-08', quantity: 142, limit: 2000 },
+        { customerId: superAdminCustomer.id, featureCode: 'MONTHLY_AI_REVIEWS', periodKey: '2026-08', quantity: 380, limit: 5000 },
+        { customerId: superAdminCustomer.id, featureCode: 'REPO_LIMIT', periodKey: 'lifetime', quantity: 18, limit: 50 },
+        { customerId: superAdminCustomer.id, featureCode: 'STORAGE_GB', periodKey: 'lifetime', quantity: 45, limit: 500 }
+      ]).onConflictDoNothing();
+    }
+
+    if (studentCustomer && basicPlan) {
+      let [sub] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.customerId, studentCustomer.id))
+        .limit(1);
+
+      if (!sub) {
+        [sub] = await db.insert(subscriptions).values({
           customerId: studentCustomer.id,
           planId: basicPlan.id,
-          action: 'CREATED',
-          reason: 'Initial student registration'
-        });
+          status: 'ACTIVE',
+          billingInterval: 'MONTHLY',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: oneYearAhead
+        }).returning();
+
+        if (sub) {
+          await db.insert(subscriptionHistory).values({
+            subscriptionId: sub.id,
+            customerId: studentCustomer.id,
+            planId: basicPlan.id,
+            action: 'CREATED',
+            reason: 'Initial student registration'
+          }).onConflictDoNothing();
+        }
       }
 
       // Usage records for student
@@ -540,26 +675,42 @@ export async function seedDatabase() {
     }
 
     if (proCustomer && proPlan) {
-      const [sub] = await db.insert(subscriptions).values({
-        customerId: proCustomer.id,
-        planId: proPlan.id,
-        status: 'ACTIVE',
-        billingInterval: 'MONTHLY',
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: oneMonthAhead
-      }).returning();
+      let [sub] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.customerId, proCustomer.id))
+        .limit(1);
 
-      if (sub) {
-        await db.insert(subscriptionHistory).values({
-          subscriptionId: sub.id,
+      if (!sub) {
+        [sub] = await db.insert(subscriptions).values({
           customerId: proCustomer.id,
           planId: proPlan.id,
-          action: 'CREATED',
-          reason: 'Subscribed to Pro Plan'
-        });
+          status: 'ACTIVE',
+          billingInterval: 'MONTHLY',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: oneMonthAhead
+        }).returning();
 
-        // Invoices for pro
-        const [inv] = await db.insert(invoices).values({
+        if (sub) {
+          await db.insert(subscriptionHistory).values({
+            subscriptionId: sub.id,
+            customerId: proCustomer.id,
+            planId: proPlan.id,
+            action: 'CREATED',
+            reason: 'Subscribed to Pro Plan'
+          }).onConflictDoNothing();
+        }
+      }
+
+      // Invoices for pro
+      let [inv] = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.invoiceNumber, 'INV-PRO-2026-001'))
+        .limit(1);
+
+      if (!inv && sub) {
+        [inv] = await db.insert(invoices).values({
           customerId: proCustomer.id,
           subscriptionId: sub.id,
           invoiceNumber: 'INV-PRO-2026-001',
@@ -580,7 +731,7 @@ export async function seedDatabase() {
             paymentMethod: 'CARD',
             provider: 'MOCK',
             providerTransactionId: 'txn_mock_pro_8892'
-          });
+          }).onConflictDoNothing();
         }
       }
 
@@ -594,26 +745,42 @@ export async function seedDatabase() {
     }
 
     if (orgCustomer && orgPlan) {
-      const [sub] = await db.insert(subscriptions).values({
-        customerId: orgCustomer.id,
-        planId: orgPlan.id,
-        status: 'ACTIVE',
-        billingInterval: 'YEARLY',
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: oneYearAhead
-      }).returning();
+      let [sub] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.customerId, orgCustomer.id))
+        .limit(1);
 
-      if (sub) {
-        await db.insert(subscriptionHistory).values({
-          subscriptionId: sub.id,
+      if (!sub) {
+        [sub] = await db.insert(subscriptions).values({
           customerId: orgCustomer.id,
           planId: orgPlan.id,
-          action: 'CREATED',
-          reason: 'Enterprise contract activated'
-        });
+          status: 'ACTIVE',
+          billingInterval: 'YEARLY',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: oneYearAhead
+        }).returning();
 
-        // Invoices for org
-        const [inv] = await db.insert(invoices).values({
+        if (sub) {
+          await db.insert(subscriptionHistory).values({
+            subscriptionId: sub.id,
+            customerId: orgCustomer.id,
+            planId: orgPlan.id,
+            action: 'CREATED',
+            reason: 'Enterprise contract activated'
+          }).onConflictDoNothing();
+        }
+      }
+
+      // Invoices for org
+      let [inv] = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.invoiceNumber, 'INV-ENT-2026-001'))
+        .limit(1);
+
+      if (!inv && sub) {
+        [inv] = await db.insert(invoices).values({
           customerId: orgCustomer.id,
           subscriptionId: sub.id,
           invoiceNumber: 'INV-ENT-2026-001',
@@ -634,7 +801,7 @@ export async function seedDatabase() {
             paymentMethod: 'INVOICE',
             provider: 'MOCK',
             providerTransactionId: 'txn_mock_org_9921'
-          });
+          }).onConflictDoNothing();
         }
       }
 
@@ -649,14 +816,22 @@ export async function seedDatabase() {
     }
 
     // 11. Seed System Notifications & Announcements
-    const [welcomeNotif] = await db.insert(notifications).values({
-      title: 'Welcome to CodeGuard AI',
-      message: 'Your CodeGuard platform is ready. Install the CLI or connect your GitHub repositories to start automated PR reviews.',
-      type: 'INFO',
-      priority: 'NORMAL',
-      channelsJson: ['IN_APP', 'EMAIL'],
-      targetAudienceJson: { type: 'EVERYONE' }
-    }).returning();
+    let [welcomeNotif] = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.title, 'Welcome to CodeGuard AI'))
+      .limit(1);
+
+    if (!welcomeNotif) {
+      [welcomeNotif] = await db.insert(notifications).values({
+        title: 'Welcome to CodeGuard AI',
+        message: 'Your CodeGuard platform is ready. Install the CLI or connect your GitHub repositories to start automated PR reviews.',
+        type: 'INFO',
+        priority: 'NORMAL',
+        channelsJson: ['IN_APP', 'EMAIL'],
+        targetAudienceJson: { type: 'EVERYONE' }
+      }).returning();
+    }
 
     if (welcomeNotif && proUser && proCustomer) {
       await db.insert(notificationRecipients).values({
@@ -664,7 +839,7 @@ export async function seedDatabase() {
         userId: proUser.id,
         customerId: proCustomer.id,
         isRead: false
-      });
+      }).onConflictDoNothing();
     }
 
     if (welcomeNotif && studentUser && studentCustomer) {
@@ -673,7 +848,7 @@ export async function seedDatabase() {
         userId: studentUser.id,
         customerId: studentCustomer.id,
         isRead: false
-      });
+      }).onConflictDoNothing();
     }
 
     // Platform Announcement
@@ -689,32 +864,40 @@ export async function seedDatabase() {
 
     // 12. Seed Support Ticket
     if (orgCustomer && orgOwnerUser) {
-      const [ticket] = await db.insert(supportTickets).values({
-        ticketNumber: 'TICK-8021',
-        customerId: orgCustomer.id,
-        userId: orgOwnerUser.id,
-        subject: 'Inquiry on Custom Enterprise SSO & SCIM Provisioning',
-        description: 'We are looking to connect our corporate Okta directory with SCIM automated seat provisioning.',
-        category: 'ACCOUNT',
-        priority: 'HIGH',
-        status: 'IN_PROGRESS'
-      }).returning();
+      let [ticket] = await db
+        .select()
+        .from(supportTickets)
+        .where(eq(supportTickets.ticketNumber, 'TICK-8021'))
+        .limit(1);
 
-      if (ticket) {
-        await db.insert(supportMessages).values([
-          {
-            ticketId: ticket.id,
-            senderUserId: orgOwnerUser.id,
-            senderType: 'CUSTOMER',
-            message: 'Hello, could you provide the technical specs for Okta SAML 2.0 integration?'
-          },
-          {
-            ticketId: ticket.id,
-            senderUserId: superAdminUser ? superAdminUser.id : orgOwnerUser.id,
-            senderType: 'ADMIN',
-            message: 'Hi Alex, our enterprise team supports SAML 2.0 and OIDC. I have attached our Okta Configuration Guide.'
-          }
-        ]);
+      if (!ticket) {
+        [ticket] = await db.insert(supportTickets).values({
+          ticketNumber: 'TICK-8021',
+          customerId: orgCustomer.id,
+          userId: orgOwnerUser.id,
+          subject: 'Inquiry on Custom Enterprise SSO & SCIM Provisioning',
+          description: 'We are looking to connect our corporate Okta directory with SCIM automated seat provisioning.',
+          category: 'ACCOUNT',
+          priority: 'HIGH',
+          status: 'IN_PROGRESS'
+        }).returning();
+
+        if (ticket) {
+          await db.insert(supportMessages).values([
+            {
+              ticketId: ticket.id,
+              senderUserId: orgOwnerUser.id,
+              senderType: 'CUSTOMER',
+              message: 'Hello, could you provide the technical specs for Okta SAML 2.0 integration?'
+            },
+            {
+              ticketId: ticket.id,
+              senderUserId: superAdminUser ? superAdminUser.id : orgOwnerUser.id,
+              senderType: 'ADMIN',
+              message: 'Hi Alex, our enterprise team supports SAML 2.0 and OIDC. I have attached our Okta Configuration Guide.'
+            }
+          ]).onConflictDoNothing();
+        }
       }
     }
 
@@ -755,30 +938,88 @@ export async function seedDatabase() {
       }
     ]).onConflictDoNothing();
 
-    // 14. Demo Repository & Policy (Existing CodeGuard pipeline)
+    // 14. Demo Repositories, Policies, PRs & Review Runs
     if (demoOrg) {
-      const [paymentsRepo] = await db
-        .insert(repositories)
-        .values({
+      // Connect Pro and Student demo users to demoOrg memberships so they have tenant access
+      if (proUser) {
+        await db.insert(memberships).values({
           organizationId: demoOrg.id,
-          provider: 'github',
-          providerRepoId: '87654321',
-          name: 'payments-service',
-          fullName: 'acme-corp/payments-service',
-          private: true,
-          defaultBranch: 'main',
-          cloneUrl: 'https://github.com/acme-corp/payments-service.git',
-          installationId: '12345678'
-        })
-        .onConflictDoNothing()
-        .returning();
+          userId: proUser.id,
+          role: 'ADMIN'
+        }).onConflictDoNothing();
+      }
+      if (studentUser) {
+        await db.insert(memberships).values({
+          organizationId: demoOrg.id,
+          userId: studentUser.id,
+          role: 'MEMBER'
+        }).onConflictDoNothing();
+      }
 
-      if (paymentsRepo) {
+      // Repositories
+      const repoSeeds = [
+        { name: 'payments-service', fullName: 'acme/payments-service', defaultBranch: 'main' },
+        { name: 'auth-gateway', fullName: 'acme/auth-gateway', defaultBranch: 'main' },
+        { name: 'customer-portal', fullName: 'acme/customer-portal', defaultBranch: 'main' },
+        { name: 'notification-worker', fullName: 'acme/notification-worker', defaultBranch: 'main' },
+        { name: 'billing-engine', fullName: 'acme/billing-engine', defaultBranch: 'main' },
+        { name: 'sast-analyzer', fullName: 'acme/sast-analyzer', defaultBranch: 'main' },
+        { name: 'ast-parser', fullName: 'acme/ast-parser', defaultBranch: 'main' },
+        { name: 'gemini-agent', fullName: 'acme/gemini-agent', defaultBranch: 'main' },
+        { name: 'api-gateway', fullName: 'acme/api-gateway', defaultBranch: 'main' },
+        { name: 'risk-engine', fullName: 'acme/risk-engine', defaultBranch: 'main' },
+        { name: 'compliance-service', fullName: 'acme/compliance-service', defaultBranch: 'main' },
+        { name: 'event-stream', fullName: 'acme/event-stream', defaultBranch: 'main' },
+        { name: 'session-manager', fullName: 'acme/session-manager', defaultBranch: 'main' },
+        { name: 'metrics-collector', fullName: 'acme/metrics-collector', defaultBranch: 'main' },
+        { name: 'policy-enforcer', fullName: 'acme/policy-enforcer', defaultBranch: 'main' },
+        { name: 'secret-vault', fullName: 'acme/secret-vault', defaultBranch: 'main' },
+        { name: 'cache-proxy', fullName: 'acme/cache-proxy', defaultBranch: 'main' },
+        { name: 'audit-dispatcher', fullName: 'acme/audit-dispatcher', defaultBranch: 'main' },
+        { name: 'search-indexer', fullName: 'acme/search-indexer', defaultBranch: 'main' },
+        { name: 'edge-router', fullName: 'acme/edge-router', defaultBranch: 'main' },
+        { name: 'webhook-delivery', fullName: 'acme/webhook-delivery', defaultBranch: 'main' },
+        { name: 'rate-limiter', fullName: 'acme/rate-limiter', defaultBranch: 'main' },
+        { name: 'user-directory', fullName: 'acme/user-directory', defaultBranch: 'main' },
+        { name: 'pricing-calculator', fullName: 'acme/pricing-calculator', defaultBranch: 'main' },
+        { name: 'invoice-renderer', fullName: 'acme/invoice-renderer', defaultBranch: 'main' }
+      ];
+
+      for (let i = 0; i < repoSeeds.length; i++) {
+        const r = repoSeeds[i];
+        const [existing] = await db
+          .select()
+          .from(repositories)
+          .where(and(eq(repositories.organizationId, demoOrg.id), eq(repositories.fullName, r.fullName)))
+          .limit(1);
+
+        if (!existing) {
+          await db.insert(repositories).values({
+            organizationId: demoOrg.id,
+            provider: 'github',
+            providerRepoId: `876543${10 + i}`,
+            name: r.name,
+            fullName: r.fullName,
+            private: true,
+            defaultBranch: r.defaultBranch,
+            cloneUrl: `https://github.com/acme-corp/${r.name}.git`,
+            installationId: '12345678'
+          });
+        }
+      }
+
+      let [activeRepo] = await db
+        .select()
+        .from(repositories)
+        .where(and(eq(repositories.organizationId, demoOrg.id), eq(repositories.name, 'payments-service')))
+        .limit(1);
+
+      if (activeRepo) {
         const [secPolicy] = await db
           .insert(policies)
           .values({
             organizationId: demoOrg.id,
-            repositoryId: paymentsRepo.id,
+            repositoryId: activeRepo.id,
             name: 'Default Zero-Trust Security Policy',
             description: 'Block merges on exposed secrets, critical SAST vulnerabilities, and architectural layer breaches.',
             isDefault: true,
@@ -787,10 +1028,15 @@ export async function seedDatabase() {
           .onConflictDoNothing()
           .returning();
 
-        if (secPolicy) {
+        let activePolicy = secPolicy;
+        if (!activePolicy) {
+          [activePolicy] = await db.select().from(policies).where(eq(policies.repositoryId, activeRepo.id)).limit(1);
+        }
+
+        if (activePolicy) {
           await db.insert(policyRules).values([
             {
-              policyId: secPolicy.id,
+              policyId: activePolicy.id,
               name: 'Block on Detected Secrets',
               ruleType: 'SECRET_BLOCK',
               condition: { blockOnAllSecrets: true },
@@ -798,7 +1044,7 @@ export async function seedDatabase() {
               enabled: true
             },
             {
-              policyId: secPolicy.id,
+              policyId: activePolicy.id,
               name: 'Block on Critical Severity Vulnerabilities',
               ruleType: 'SEVERITY_THRESHOLD',
               condition: { minSeverityToBlock: 'CRITICAL' },
@@ -806,7 +1052,7 @@ export async function seedDatabase() {
               enabled: true
             },
             {
-              policyId: secPolicy.id,
+              policyId: activePolicy.id,
               name: 'Warn on High Severity Issues',
               ruleType: 'SEVERITY_THRESHOLD',
               condition: { minSeverityToWarn: 'HIGH' },
@@ -815,10 +1061,194 @@ export async function seedDatabase() {
             }
           ]).onConflictDoNothing();
         }
+
+        // Seed Sample Pull Requests
+        let [pr142] = await db
+          .select()
+          .from(pullRequests)
+          .where(eq(pullRequests.number, 142))
+          .limit(1);
+
+        if (!pr142) {
+          [pr142] = await db.insert(pullRequests).values({
+            organizationId: demoOrg.id,
+            repositoryId: activeRepo.id,
+            number: 142,
+            title: 'feat: add idempotent charge endpoint and HMAC signature validation',
+            description: 'Implements Stripe-compatible idempotency keys and constant-time HMAC verification in billing webhook processor.',
+            state: 'OPEN',
+            sourceBranch: 'feature/idempotent-charges',
+            targetBranch: 'main',
+            headSha: '9a8f21bc4e5781a93b4510cd294812fa91823719',
+            baseSha: '03c477e5d891b29a471908234671923058912304',
+            authorUsername: 'elena-rostova',
+            isDraft: false
+          }).returning();
+        }
+
+        let [pr138] = await db
+          .select()
+          .from(pullRequests)
+          .where(eq(pullRequests.number, 138))
+          .limit(1);
+
+        if (!pr138) {
+          [pr138] = await db.insert(pullRequests).values({
+            organizationId: demoOrg.id,
+            repositoryId: activeRepo.id,
+            number: 138,
+            title: 'fix(auth): sanitize JWT token claims & Shannon entropy checks',
+            description: 'Strengthens zero-trust token decoding and prevents leaking test tokens in log streams.',
+            state: 'MERGED',
+            sourceBranch: 'fix/token-entropy-guard',
+            targetBranch: 'main',
+            headSha: 'c81923b0a9481237192837192837192837192837',
+            baseSha: '03c477e5d891b29a471908234671923058912304',
+            authorUsername: 'alex-rivera',
+            isDraft: false
+          }).returning();
+        }
+
+        // Seed Sample Review Runs
+        if (pr142) {
+          let [run142] = await db
+            .select()
+            .from(reviewRuns)
+            .where(eq(reviewRuns.pullRequestId, pr142.id))
+            .limit(1);
+
+          if (!run142) {
+            [run142] = await db.insert(reviewRuns).values({
+              organizationId: demoOrg.id,
+              repositoryId: activeRepo.id,
+              pullRequestId: pr142.id,
+              commitSha: pr142.headSha,
+              state: 'PASSED',
+              policyOutcome: 'ALLOW',
+              summary: 'Google Gemini 3.7 Flash AI Review passed with 0 security flaws. AST Graph and Shannon entropy verified 100% clean across all changed diffs.',
+              criticalCount: 0,
+              highCount: 0,
+              mediumCount: 0,
+              lowCount: 0,
+              infoCount: 0,
+              durationMs: 1420,
+              startedAt: new Date(Date.now() - 3600 * 1000),
+              completedAt: new Date(Date.now() - 3598 * 1000)
+            }).returning();
+
+            if (run142) {
+              await db.insert(reviewStages).values([
+                {
+                  reviewRunId: run142.id,
+                  name: 'GRAPH_RESOLVER',
+                  status: 'COMPLETED',
+                  durationMs: 180,
+                  metadata: { filesParsed: 14, symbols: 84 }
+                },
+                {
+                  reviewRunId: run142.id,
+                  name: 'SECRET_SCAN',
+                  status: 'COMPLETED',
+                  durationMs: 95,
+                  metadata: { entropyLeaks: 0, tokensEvaluated: 1842 }
+                },
+                {
+                  reviewRunId: run142.id,
+                  name: 'AI_ANALYSIS',
+                  status: 'COMPLETED',
+                  durationMs: 1050,
+                  metadata: { model: 'Google Gemini 3.7 Flash', verdict: 'APPROVED', confidence: 0.99 }
+                },
+                {
+                  reviewRunId: run142.id,
+                  name: 'POLICY_EVALUATION',
+                  status: 'COMPLETED',
+                  durationMs: 95,
+                  metadata: { rulesSatisfied: 3, rulesFailed: 0 }
+                }
+              ]).onConflictDoNothing();
+            }
+          }
+        }
+
+        // Seed Sample Review Findings
+        if (pr142) {
+          const findingsToSeed = [
+            {
+              organizationId: demoOrg.id,
+              repositoryId: activeRepo.id,
+              pullRequestId: pr142.id,
+              fingerprint: 'fp_sec_001_ghp_entropy_token',
+              severity: 'CRITICAL',
+              category: 'SECRET',
+              source: 'Shannon-Entropy-Scanner',
+              title: 'Hardcoded GitHub Personal Access Token Committed',
+              description: 'Shannon entropy analysis detected a high-entropy string matching GitHub API token format (ghp_*) in client authentication header.',
+              filePath: 'packages/auth/src/token.ts',
+              startLine: 30,
+              endLine: 31,
+              evidence: 'const GITHUB_ACCESS_TOKEN = "ghp_91823719827391827391827398127398";',
+              impact: 'Exposed access tokens allow unauthorized API actions and access to private repositories.',
+              recommendation: 'Remove token and inject via environment variables (GITHUB_TOKEN) from secret manager.',
+              blocking: true,
+              status: 'RESOLVED'
+            },
+            {
+              organizationId: demoOrg.id,
+              repositoryId: activeRepo.id,
+              pullRequestId: pr142.id,
+              fingerprint: 'fp_ast_002_dangerous_eval_rce',
+              severity: 'HIGH',
+              category: 'SAST',
+              source: 'AST-Semantic-Parser',
+              title: 'Dangerous dynamic eval() execution on untrusted input',
+              description: 'AST traversal found direct invocation of eval() on untrusted config parameter, which introduces arbitrary Remote Code Execution vulnerabilities.',
+              filePath: 'apps/api/src/routes/config.ts',
+              startLine: 53,
+              endLine: 54,
+              evidence: 'return eval("(" + untrustedInput + ")");',
+              impact: 'Attacker can execute arbitrary shell or Node.js commands in API container context.',
+              recommendation: 'Use JSON.parse() with strict schema validation instead of dynamic code evaluation.',
+              blocking: true,
+              status: 'OPEN'
+            },
+            {
+              organizationId: demoOrg.id,
+              repositoryId: activeRepo.id,
+              pullRequestId: pr142.id,
+              fingerprint: 'fp_ast_003_race_condition_tx',
+              severity: 'MEDIUM',
+              category: 'ARCHITECTURE',
+              source: 'Gemini-3.7-AI-Reviewer',
+              title: 'Non-atomic payment balance deduction without database lock',
+              description: 'Concurrency race condition detected where ledger updates occur across two non-transactional database statements without FOR UPDATE row lock.',
+              filePath: 'apps/api/src/routes/billing.ts',
+              startLine: 118,
+              endLine: 125,
+              evidence: 'await db.update(customers).set({ balance: current - amount });',
+              impact: 'Concurrent checkout requests could lead to double-spend inconsistencies under high throughput.',
+              recommendation: 'Wrap balance mutations in db.transaction() with atomic SQL subtraction: balance = balance - amount.',
+              blocking: false,
+              status: 'OPEN'
+            }
+          ];
+
+          for (const f of findingsToSeed) {
+            const [existing] = await db
+              .select()
+              .from(reviewFindings)
+              .where(eq(reviewFindings.fingerprint, f.fingerprint))
+              .limit(1);
+
+            if (!existing) {
+              await db.insert(reviewFindings).values(f as any).onConflictDoNothing();
+            }
+          }
+        }
       }
     }
 
-    logger.info('✅ Complete database seed completed successfully with all plans, features, benefits, customers, subscriptions, and portal mock data.');
+    logger.info('✅ Complete database seed completed successfully with all plans, features, benefits, customers, subscriptions, PRs, review runs, and findings.');
   } catch (error) {
     logger.error({ err: error }, '❌ Database seeding error');
   }

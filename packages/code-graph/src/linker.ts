@@ -226,12 +226,24 @@ export class GraphLinker {
       targetBasePath = (options?.rootDir ? path.join(options.rootDir, subPath) : subPath).replace(/\\/g, '/');
     }
 
+    // Under NodeNext/ESM, TypeScript sources import their siblings with a .js
+    // specifier that resolves to a .ts file on disk ('./service.js' -> service.ts).
+    // Without stripping that suffix the candidates below only ever produce
+    // 'service.js.ts' and nothing links in a NodeNext codebase.
+    const basePaths = [targetBasePath];
+    const emittedExt = targetBasePath.match(/\.(js|jsx|mjs|cjs)$/);
+    if (emittedExt) {
+      basePaths.push(targetBasePath.slice(0, -emittedExt[0].length));
+    }
+
     // Try matching extensions
     const candidateExtensions = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js'];
-    for (const ext of candidateExtensions) {
-      const testPath = (targetBasePath + ext).replace(/\\/g, '/');
-      const found = allFilePaths.find((f) => f.replace(/\\/g, '/') === testPath || f.endsWith(testPath));
-      if (found) return found;
+    for (const basePath of basePaths) {
+      for (const ext of candidateExtensions) {
+        const testPath = (basePath + ext).replace(/\\/g, '/');
+        const found = allFilePaths.find((f) => f.replace(/\\/g, '/') === testPath || f.endsWith(testPath));
+        if (found) return found;
+      }
     }
 
     return undefined;

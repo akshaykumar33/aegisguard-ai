@@ -26,12 +26,13 @@ export async function organizationPortalRoutes(app: FastifyInstance): Promise<vo
       [customer] = await db.select().from(customers).where(eq(customers.primaryUserId, payload.sub)).limit(1);
     }
 
-    if (!customer || !customer.organizationId) {
+    const orgId = customer?.organizationId || payload.orgId;
+    if (!orgId) {
       reply.status(403).send({ error: 'Current account does not belong to an organization' });
       return null;
     }
 
-    const [org] = await db.select().from(organizations).where(eq(organizations.id, customer.organizationId)).limit(1);
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
     if (!org) {
       reply.status(404).send({ error: 'Organization not found' });
       return null;
@@ -99,7 +100,7 @@ export async function organizationPortalRoutes(app: FastifyInstance): Promise<vo
     if (!auth) return;
 
     try {
-      const members = await db
+      const rawMembers = await db
         .select({
           id: memberships.id,
           role: memberships.role,
@@ -110,7 +111,19 @@ export async function organizationPortalRoutes(app: FastifyInstance): Promise<vo
         .innerJoin(users, eq(memberships.userId, users.id))
         .where(eq(memberships.organizationId, auth.org.id));
 
-      return reply.send({ members });
+      // Flatten so the frontend can access name/email directly
+      const members = rawMembers.map((m) => ({
+        id: m.id,
+        name: m.user.name ?? m.user.email?.split('@')[0] ?? 'Unknown',
+        email: m.user.email ?? '—',
+        role: m.role,
+        joinedAt: m.createdAt,
+        avatarUrl: m.user.avatarUrl ?? null,
+      }));
+
+      const seatLimit = (await entitlementEngine.getLimit(auth.customer.id, 'USER_SEATS')) || 50;
+
+      return reply.send({ members, seatLimit });
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
     }

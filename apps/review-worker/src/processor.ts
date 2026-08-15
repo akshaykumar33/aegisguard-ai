@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { Job } from '@codeguard/queue';
 import { logger } from '@codeguard/logger';
 import { db, reviewRuns, reviewStages, reviewFindings, policies, policyRules, repositories, pullRequests } from '@codeguard/database';
@@ -6,11 +7,12 @@ import { githubProvider } from '@codeguard/github';
 import { parseUnifiedDiff, SymbolExtractor } from '@codeguard/code-parser';
 import type { DiffFile, DiffHunk, DiffLine } from '@codeguard/code-parser';
 import { securityOrchestrator } from '@codeguard/security-scanner';
-import { CodeGraphStore } from '@codeguard/code-graph';
+import { IncrementalGraphIndexer } from '@codeguard/code-graph';
+import type { BlastRadiusReport } from '@codeguard/code-graph';
 import { HybridRetriever } from '@codeguard/retrieval';
 import { geminiReviewClient } from '@codeguard/ai-reviewer';
 import { AiVerifier } from '@codeguard/ai-verifier';
-import { PolicyEngine } from '@codeguard/policy-engine';
+import { PolicyEngine, entitlementEngine, resolveCustomerForOrganization } from '@codeguard/policy-engine';
 import type { ReviewJobData, Finding, Policy } from '@codeguard/types';
 
 /**
@@ -144,6 +146,71 @@ ${filesTable}
 `;
 }
 
+/**
+ * Rebuild the post-merge view of a changed file from its diff hunks.
+ *
+ * Two properties matter to everything downstream:
+ *  - Deleted lines are excluded. Concatenating every hunk line meant a secret you
+ *    had just *removed* was reported as a new finding, blocking the very PR that
+ *    fixed it.
+ *  - Each line is placed at its real line number, so scanner output lines up with
+ *    the file on GitHub. Previously line numbers were positions within the
+ *    concatenated hunks, which put inline review comments on unrelated lines.
+ *
+ * Regions outside the hunks are unknown to us and become empty lines; they hold
+ * the offsets correct without inventing content.
+ */
+export function reconstructPostImage(file: DiffFile): string {
+  const lines: string[] = [];
+
+  for (const hunk of file.hunks) {
+    for (const line of hunk.lines) {
+      if (line.type === 'del') continue;
+      if (line.newLineNumber === undefined) continue;
+      lines[line.newLineNumber - 1] = line.content;
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i] === undefined) lines[i] = '';
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Render the blast radius for the check run's dependency-impact section.
+ *
+ * Returns undefined when nothing downstream is affected, so the summary omits
+ * the section rather than showing an empty one.
+ */
+export function formatBlastRadiusSummary(report?: BlastRadiusReport): string | undefined {
+  if (!report || report.totalAffectedNodes === 0) return undefined;
+
+  const rows = [
+    `| Risk score | **${report.riskScore}/100** |`,
+    `| Symbols changed | ${report.changedSymbols.length} |`,
+    `| Direct callers | ${report.directCallers.length} |`,
+    `| Transitive callers | ${report.transitiveCallers.length} |`,
+    `| Dependency depth | ${report.dependencyDepth} |`
+  ].join('\n');
+
+  let out = `| Metric | Value |\n| :--- | :--- |\n${rows}\n`;
+
+  if (report.riskFactors.length > 0) {
+    out += `\n**Risk factors**\n${report.riskFactors.map((r) => `- ${r}`).join('\n')}\n`;
+  }
+
+  if (report.impactedTestFiles.length > 0) {
+    out += `\n**Tests covering the affected code**\n${report.impactedTestFiles
+      .slice(0, 10)
+      .map((f) => `- \`${f}\``)
+      .join('\n')}\n`;
+  }
+
+  return out;
+}
+
 export async function processReviewJob(job: Job<ReviewJobData>): Promise<void> {
   const { organizationId, repositoryId, pullRequestId, prNumber, headSha, baseSha, installationId } = job.data;
   const startTime = Date.now();
@@ -253,7 +320,7 @@ export async function processReviewJob(job: Job<ReviewJobData>): Promise<void> {
   // 5. Stage 3: Deterministic Security Scanners (Secrets, SAST, Dependencies)
   const filesToScan = parsedDiff.files.map((f: DiffFile) => ({
     filePath: f.newPath,
-    content: f.hunks.flatMap((h: DiffHunk) => h.lines.map((l: DiffLine) => l.content)).join('\n')
+    content: reconstructPostImage(f)
   }));
 
   const deterministicFindings: Finding[] = await recordStage('SECRET_SCAN', async () => {
@@ -267,7 +334,25 @@ export async function processReviewJob(job: Job<ReviewJobData>): Promise<void> {
   });
 
   // 6. Stage 4: Code Graph & Hybrid Context Retrieval
-  const graphStore = new CodeGraphStore();
+  //
+  // The store must be populated before the retriever traverses it. It was
+  // previously constructed empty and handed straight to HybridRetriever, so
+  // caller/callee lookups always returned nothing and the model never received
+  // any cross-file context.
+  const indexer = new IncrementalGraphIndexer();
+  const indexResult = indexer.indexFilesInMemory(filesToScan);
+  const graphStore = indexer.getStore();
+
+  logger.info(
+    {
+      files: indexResult.totalFiles,
+      symbols: indexResult.totalSymbols,
+      edges: indexResult.totalEdges,
+      durationMs: indexResult.durationMs
+    },
+    '🧠 Code graph indexed for changed files'
+  );
+
   const extractedSymbols = filesToScan.flatMap((f: { filePath: string; content: string }) => SymbolExtractor.extractSymbols(f.filePath, f.content));
   const changedSymbols = extractedSymbols.filter((s) => {
     const lines = changedFilesMap.get(s.filePath) || [];
@@ -318,7 +403,13 @@ export async function processReviewJob(job: Job<ReviewJobData>): Promise<void> {
     repositoryId,
     pullRequestId,
     reviewRunId: reviewRun.id,
-    fingerprint: `fp-ai-${f.filePath}-${f.startLine}-${f.title.slice(0, 20)}`,
+    // Stable across re-runs so the onConflictDoNothing below actually dedupes.
+    // This previously embedded Date.now(), so re-reviewing a PR re-inserted every
+    // finding instead of recognising it as already recorded.
+    fingerprint: createHash('sha256')
+      .update(`${repositoryId}:${f.filePath}:${f.startLine}:${f.category}:${f.title}`)
+      .digest('hex')
+      .slice(0, 40),
     severity: f.severity,
     category: f.category,
     source: 'AI',
@@ -445,7 +536,8 @@ export async function processReviewJob(job: Job<ReviewJobData>): Promise<void> {
       allFindings,
       parsedDiff.files,
       parsedDiff.totalAdditions,
-      parsedDiff.totalDeletions
+      parsedDiff.totalDeletions,
+      formatBlastRadiusSummary(assembledContext.blastRadiusReport)
     );
 
     if (checkRunId) {
@@ -483,6 +575,21 @@ export async function processReviewJob(job: Job<ReviewJobData>): Promise<void> {
       summaryMarkdown,
       inlineComments
     );
+  }
+
+  // Meter the run against the customer's monthly quota. Deliberately after the
+  // review completes, so a failed run is not billed. Never fatal: a metering
+  // problem must not fail a review that already produced results.
+  try {
+    const customerId = await resolveCustomerForOrganization(organizationId);
+    if (customerId) {
+      await entitlementEngine.recordUsage(customerId, 'MONTHLY_AI_REVIEWS', 1);
+      await entitlementEngine.recordUsage(customerId, 'MONTHLY_PR_REVIEWS', 1);
+    } else {
+      logger.warn({ organizationId }, 'No customer linked to organization; review not metered');
+    }
+  } catch (err) {
+    logger.error({ err, organizationId }, 'Failed to record review usage');
   }
 
   logger.info(

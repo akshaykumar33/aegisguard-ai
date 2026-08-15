@@ -3,7 +3,9 @@
 import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { useApp } from '@/lib/store';
-import { MOCK_PLANS } from '@/lib/api';
+import { apiClient, ApiError } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
+import { LoadingState, ErrorState } from '@/components/ui/ResourceStates';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Check, Sparkles } from 'lucide-react';
@@ -16,16 +18,36 @@ export function UpgradeModal() {
   const [billingInterval, setBillingInterval] = useState<'MONTHLY' | 'ANNUAL'>('MONTHLY');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleUpgrade = () => {
+  // Only fetch the catalogue while the modal is open.
+  const subscription = useResource(
+    () => (isUpgradeModalOpen ? apiClient.customerSubscription() : Promise.resolve(null as any)),
+    [isUpgradeModalOpen]
+  );
+
+  const availablePlans: any[] = subscription.data?.availablePlans ?? [];
+
+  const handleUpgrade = async () => {
+    const plan = availablePlans.find((p) => p.slug === selectedPlanSlug);
+    if (!plan) {
+      toast.error('Select a plan to continue.');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Real plan change: this used to be a setTimeout that reported success
+      // without contacting the API at all.
+      await apiClient.changeSubscription(plan.id, billingInterval === 'ANNUAL' ? 'YEARLY' : 'MONTHLY');
       setIsUpgradeModalOpen(false);
-      const plan = MOCK_PLANS.find((p) => p.slug === selectedPlanSlug);
-      toast.success(`Successfully upgraded account to ${plan?.name}!`, {
-        description: `Your new entitlements and quota limits are active immediately.`,
+      toast.success(`Subscription changed to ${plan.name}`, {
+        description: 'Your new entitlements and quota limits are active immediately.',
       });
-    }, 900);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Could not change your subscription.';
+      toast.error('Upgrade failed', { description: message });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -39,12 +61,12 @@ export function UpgradeModal() {
       <div className="space-y-6">
         {/* Interval toggle */}
         <div className="flex justify-center">
-          <div className="flex items-center bg-input p-1 rounded-full border border-border-subtle">
+          <div className="flex items-center bg-card p-0.5 rounded-lg border border-border">
             <button
               onClick={() => setBillingInterval('MONTHLY')}
               className={cn(
-                'px-4 py-1.5 rounded-full text-xs font-semibold transition-all',
-                billingInterval === 'MONTHLY' ? 'bg-primary text-white shadow-subtle' : 'text-text-secondary'
+                'px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer',
+                billingInterval === 'MONTHLY' ? 'bg-zinc-800 text-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'
               )}
             >
               Monthly Billing
@@ -52,19 +74,22 @@ export function UpgradeModal() {
             <button
               onClick={() => setBillingInterval('ANNUAL')}
               className={cn(
-                'px-4 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5',
-                billingInterval === 'ANNUAL' ? 'bg-primary text-white shadow-subtle' : 'text-text-secondary'
+                'px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer',
+                billingInterval === 'ANNUAL' ? 'bg-zinc-800 text-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground'
               )}
             >
               <span>Annual Billing</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-success text-white">Save 20%</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 font-mono border border-emerald-500/20 font-medium">Save 20%</span>
             </button>
           </div>
         </div>
 
         {/* Plan Cards Grid */}
+        {subscription.loading && <LoadingState label="Loading plans…" />}
+        {subscription.error && <ErrorState error={subscription.error} onRetry={subscription.reload} />}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {MOCK_PLANS.map((plan) => {
+          {availablePlans.map((plan: any) => {
             const isSelected = selectedPlanSlug === plan.slug;
             const price = billingInterval === 'ANNUAL' ? plan.priceMonthly * 0.8 : plan.priceMonthly;
 
@@ -73,14 +98,14 @@ export function UpgradeModal() {
                 key={plan.id}
                 onClick={() => setSelectedPlanSlug(plan.slug)}
                 className={cn(
-                  'rounded-2xl border p-5 transition-all cursor-pointer flex flex-col justify-between relative',
+                  'rounded-xl border p-5 transition-colors cursor-pointer flex flex-col justify-between relative shadow-xs',
                   isSelected
-                    ? 'border-primary bg-primary-light/20 shadow-glow ring-2 ring-primary/40'
-                    : 'border-border-subtle bg-card hover:bg-card-hover hover:border-border'
+                    ? 'border-foreground/80 bg-zinc-900/60'
+                    : 'border-border bg-card hover:bg-card-hover hover:border-zinc-700'
                 )}
               >
                 {plan.isPopular && (
-                  <div className="absolute -top-2.5 right-4">
+                  <div className="absolute -top-2.5 right-3">
                     <Badge variant="primary" size="sm">
                       <Sparkles className="w-3 h-3 mr-1" /> Most Popular
                     </Badge>
@@ -88,21 +113,26 @@ export function UpgradeModal() {
                 )}
 
                 <div>
-                  <h4 className="text-base font-bold text-foreground font-heading">{plan.name}</h4>
-                  <p className="mt-1 text-xs text-text-secondary line-clamp-2">{plan.description}</p>
+                  <h4 className="text-sm font-semibold text-foreground font-heading">{plan.name}</h4>
+                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{plan.description}</p>
 
                   <div className="my-4">
-                    <div className="text-2xl font-extrabold text-foreground font-heading">
+                    <div className="text-2xl font-bold text-foreground font-heading">
                       {price === 0 ? 'Free' : formatCurrency(price)}
-                      {price > 0 && <span className="text-xs font-normal text-text-muted"> / mo</span>}
+                      {price > 0 && <span className="text-xs font-normal text-muted-foreground"> / mo</span>}
                     </div>
                   </div>
 
-                  <ul className="space-y-2 border-t border-border-subtle pt-4">
-                    {plan.features.map((f, i) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-text-secondary">
-                        <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                        <span>{f}</span>
+                  <ul className="space-y-2 border-t border-border pt-4">
+                    {(plan.features ?? [])
+                      .filter((f: any) => f.isEnabled)
+                      .map((f: any, i: number) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>
+                          {f.feature?.name ?? f.feature?.code}
+                          {typeof f.value === 'number' && f.value > 0 ? `: ${f.value.toLocaleString()}` : ''}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -128,15 +158,15 @@ export function UpgradeModal() {
         </div>
 
         {/* Footer actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-border-subtle">
-          <div className="text-xs text-text-muted">
+        <div className="flex items-center justify-between pt-4 border-t border-border">
+          <div className="text-xs text-muted-foreground">
             Current Tier: <strong className="text-foreground">{persona.planName}</strong>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setIsUpgradeModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="glow" size="sm" isLoading={isLoading} onClick={handleUpgrade}>
+            <Button variant="primary" size="sm" isLoading={isLoading} onClick={handleUpgrade}>
               Confirm Upgrade
             </Button>
           </div>

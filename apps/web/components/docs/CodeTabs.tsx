@@ -60,7 +60,7 @@ export function CodeTabs({ commands }: CodeTabsProps) {
         </button>
       </div>
 
-      <div className="p-3.5 font-mono text-xs text-primary bg-black/40 flex items-center gap-2 overflow-x-auto">
+      <div className="p-3.5 font-mono text-xs text-primary bg-background flex items-center gap-2 overflow-x-auto">
         <span className="text-muted-foreground opacity-60 select-none">$</span>
         <span className="text-foreground">{activeCommand}</span>
       </div>

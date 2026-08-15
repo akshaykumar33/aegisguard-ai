@@ -3,268 +3,534 @@
 @import 'tailwindcss/utilities';
 
 /* ==========================================================================
-   SHADCN / LINEAR / VERCEL DESIGN SYSTEM TOKENS
+   DESIGN TOKENS (Linear / Vercel / GitHub Luxury Dark System)
    ========================================================================== */
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.625rem;
 }
 
-/* 1. DARK OBSIDIAN (Default Linear / Vercel Dark Mode) */
+/* --- Dark (Linear / Obsidian Luxury Default) ------------------------------ */
 :root,
 html[data-theme="dark"] {
+  /* True deep obsidian black */
   --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;
 
-  --card: 240 10% 4.9%;
-  --card-hover: 240 6% 8%;
-  --card-elevated: 240 6% 10%;
+  --card: 240 6% 6.5%;
+  --card-hover: 240 6% 9.5%;
+  --card-elevated: 240 6% 8.5%;
   --card-foreground: 0 0% 98%;
 
-  --popover: 240 10% 4.9%;
+  --popover: 240 6% 7%;
   --popover-foreground: 0 0% 98%;
 
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --primary-hover: 221.2 83.2% 45%;
-  --primary-light: 221.2 83.2% 53.3% / 0.15;
-  --primary-glow: 221.2 83.2% 53.3% / 0.35;
-
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-
-  --accent: 188.7 94.5% 42.7%;
-  --accent-foreground: 0 0% 98%;
-  --accent-light: 188.7 94.5% 42.7% / 0.15;
-
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  --destructive-light: 0 84.2% 60.2% / 0.15;
-
-  --success: 142.1 76.2% 36.3%;
-  --success-foreground: 355.7 100% 97.3%;
-  --success-light: 142.1 76.2% 36.3% / 0.15;
-
-  --warning: 38 92% 50%;
-  --warning-foreground: 48 96% 89%;
-  --warning-light: 38 92% 50% / 0.15;
-
-  --border: 240 3.7% 15.9%;
-  --border-subtle: 240 3.7% 12%;
-  --border-focus: 221.2 83.2% 53.3%;
-
-  --input: 240 3.7% 11%;
-  --ring: 221.2 83.2% 53.3%;
-}
-
-/* 2. STRIPE PEARL (Clean Crisp Light Mode) */
-html[data-theme="stripe"] {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
-
-  --card: 0 0% 100%;
-  --card-hover: 240 4.8% 96.5%;
-  --card-elevated: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
-
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --primary-hover: 221.2 83.2% 45%;
-  --primary-light: 221.2 83.2% 53.3% / 0.1;
-  --primary-glow: 221.2 83.2% 53.3% / 0.2;
-
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
-
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-
-  --accent: 199.4 95.5% 73.9%;
-  --accent-foreground: 240 5.9% 10%;
-  --accent-light: 199.4 95.5% 73.9% / 0.1;
-
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  --destructive-light: 0 84.2% 60.2% / 0.1;
-
-  --success: 142.1 76.2% 36.3%;
-  --success-foreground: 355.7 100% 97.3%;
-  --success-light: 142.1 76.2% 36.3% / 0.1;
-
-  --warning: 38 92% 50%;
-  --warning-foreground: 48 96% 89%;
-  --warning-light: 38 92% 50% / 0.1;
-
-  --border: 240 5.9% 90%;
-  --border-subtle: 240 5.9% 93%;
-  --border-focus: 221.2 83.2% 53.3%;
-
-  --input: 240 5.9% 95%;
-  --ring: 221.2 83.2% 53.3%;
-}
-
-/* 3. AMOLED MIDNIGHT (OLED Pure Black) */
-html[data-theme="amoled"] {
-  --background: 0 0% 0%;
-  --foreground: 0 0% 100%;
-
-  --card: 0 0% 3%;
-  --card-hover: 0 0% 7%;
-  --card-elevated: 0 0% 9%;
-  --card-foreground: 0 0% 100%;
-
-  --popover: 0 0% 4%;
-  --popover-foreground: 0 0% 100%;
-
-  --primary: 221.2 83.2% 53.3%;
+  /* Crisp monochrome / refined electric blue primary */
+  --primary: 217 91% 60%;
   --primary-foreground: 0 0% 100%;
-  --primary-hover: 221.2 83.2% 45%;
-  --primary-light: 221.2 83.2% 53.3% / 0.2;
-  --primary-glow: 221.2 83.2% 53.3% / 0.45;
+  --primary-hover: 217 91% 54%;
+  --primary-light: 217 91% 60% / 0.12;
+  --primary-glow: 217 91% 60% / 0.20;
 
-  --secondary: 0 0% 12%;
-  --secondary-foreground: 0 0% 100%;
+  --secondary: 240 5% 12%;
+  --secondary-foreground: 240 5% 90%;
 
-  --muted: 0 0% 12%;
-  --muted-foreground: 0 0% 65%;
+  --muted: 240 5% 11%;
+  --muted-foreground: 240 5% 65%;
 
-  --accent: 188.7 94.5% 42.7%;
+  /* Two levels of refined typography contrast */
+  --text-secondary: 240 5% 75%;
+  --text-muted: 240 4% 50%;
+
+  --accent: 217 91% 60%;
   --accent-foreground: 0 0% 100%;
-  --accent-light: 188.7 94.5% 42.7% / 0.2;
+  --accent-light: 217 91% 60% / 0.12;
 
-  --destructive: 0 84.2% 60.2%;
+  /* Restrained semantic severity indicators */
+  --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --destructive-light: 0 84.2% 60.2% / 0.2;
+  --destructive-light: 0 84% 60% / 0.12;
 
-  --success: 142.1 76.2% 36.3%;
+  --success: 142 71% 45%;
   --success-foreground: 0 0% 100%;
-  --success-light: 142.1 76.2% 36.3% / 0.2;
+  --success-light: 142 71% 45% / 0.12;
 
   --warning: 38 92% 50%;
   --warning-foreground: 0 0% 100%;
-  --warning-light: 38 92% 50% / 0.2;
+  --warning-light: 38 92% 50% / 0.12;
 
-  --border: 0 0% 14%;
-  --border-subtle: 0 0% 10%;
-  --border-focus: 221.2 83.2% 53.3%;
+  --border: 240 5% 15%;
+  --border-subtle: 240 5% 10%;
+  --border-focus: 240 5% 40%;
 
-  --input: 0 0% 6%;
-  --ring: 221.2 83.2% 53.3%;
+  --input: 240 6% 8%;
+  --ring: 240 5% 40%;
 }
 
-/* 4. OBSIDIAN PURPLE (AI Neon) */
-html[data-theme="purple"] {
-  --background: 260 50% 4%;
-  --foreground: 260 20% 98%;
+/* --- Light (Vercel / Apple Pure Light) ----------------------------------- */
+html[data-theme="light"] {
+  --background: 220 20% 98%;
+  --foreground: 224 45% 10%;
 
-  --card: 260 45% 6%;
-  --card-hover: 260 40% 10%;
-  --card-elevated: 260 38% 13%;
-  --card-foreground: 260 20% 98%;
+  --card: 0 0% 100%;
+  --card-hover: 220 20% 96%;
+  --card-elevated: 0 0% 100%;
+  --card-foreground: 224 45% 10%;
 
-  --primary: 271 91% 65%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 45% 10%;
+
+  --primary: 217 91% 54%;
   --primary-foreground: 0 0% 100%;
-  --primary-hover: 271 91% 55%;
-  --primary-light: 271 91% 65% / 0.18;
-  --primary-glow: 271 91% 65% / 0.4;
+  --primary-hover: 217 91% 46%;
+  --primary-light: 217 91% 54% / 0.10;
+  --primary-glow: 217 91% 54% / 0.18;
 
-  --secondary: 260 30% 18%;
-  --secondary-foreground: 260 20% 98%;
+  --secondary: 220 18% 92%;
+  --secondary-foreground: 222 24% 16%;
 
-  --muted: 260 30% 18%;
-  --muted-foreground: 260 20% 65%;
+  --muted: 220 20% 93.5%;
+  --muted-foreground: 220 10% 42%;
 
-  --accent: 326 100% 64%;
+  --text-secondary: 220 12% 36%;
+  --text-muted: 220 10% 50%;
+
+  --accent: 190 62% 34%;
   --accent-foreground: 0 0% 100%;
-  --accent-light: 326 100% 64% / 0.18;
+  --accent-light: 190 62% 34% / 0.09;
 
-  --border: 260 30% 18%;
-  --border-subtle: 260 30% 12%;
-  --border-focus: 271 91% 65%;
+  --destructive: 358 66% 47%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-light: 358 66% 47% / 0.1;
 
-  --input: 260 40% 8%;
-  --ring: 271 91% 65%;
+  --success: 152 58% 32%;
+  --success-foreground: 0 0% 100%;
+  --success-light: 152 58% 32% / 0.1;
+
+  --warning: 30 82% 40%;
+  --warning-foreground: 0 0% 100%;
+  --warning-light: 30 82% 40% / 0.12;
+
+  --border: 220 16% 87%;
+  --border-subtle: 220 16% 91.5%;
+  --border-focus: 220 14% 65%;
+
+  --input: 0 0% 100%;
+  --ring: 220 14% 65%;
 }
 
-/* 5. EMERALD CYBER */
-html[data-theme="emerald"] {
-  --background: 155 50% 3%;
-  --foreground: 155 20% 98%;
+/* --- Tokyo Night --------------------------------------------------------- */
+html[data-theme="tokyo-night"] {
+  --background: 235 24% 9%;
+  --foreground: 225 35% 92%;
 
-  --card: 155 45% 5%;
-  --card-hover: 155 40% 9%;
-  --card-elevated: 155 38% 12%;
-  --card-foreground: 155 20% 98%;
+  --card: 235 21% 13%;
+  --card-hover: 235 19% 18%;
+  --card-elevated: 235 21% 15%;
+  --card-foreground: 225 35% 94%;
 
-  --primary: 158 82% 43%;
+  --popover: 235 21% 12%;
+  --popover-foreground: 225 35% 92%;
+
+  --primary: 255 86% 72%;
+  --primary-foreground: 235 24% 9%;
+  --primary-hover: 255 86% 66%;
+  --primary-light: 255 86% 72% / 0.15;
+  --primary-glow: 255 86% 72% / 0.3;
+
+  --secondary: 235 18% 18%;
+  --secondary-foreground: 225 30% 90%;
+
+  --muted: 235 18% 15%;
+  --muted-foreground: 230 14% 65%;
+
+  --text-secondary: 230 18% 74%;
+  --text-muted: 230 14% 56%;
+
+  --accent: 187 85% 65%;
+  --accent-foreground: 235 24% 9%;
+  --accent-light: 187 85% 65% / 0.15;
+
+  --destructive: 348 94% 68%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-light: 348 94% 68% / 0.15;
+
+  --success: 158 64% 52%;
+  --success-foreground: 235 24% 9%;
+  --success-light: 158 64% 52% / 0.15;
+
+  --warning: 42 98% 62%;
+  --warning-foreground: 235 24% 9%;
+  --warning-light: 42 98% 62% / 0.15;
+
+  --border: 235 18% 22%;
+  --border-subtle: 235 18% 16%;
+  --border-focus: 255 86% 72%;
+
+  --input: 235 20% 12%;
+  --ring: 255 86% 72%;
+}
+
+/* --- Dracula ------------------------------------------------------------- */
+html[data-theme="dracula"] {
+  --background: 231 15% 12%;
+  --foreground: 60 30% 96%;
+
+  --card: 231 15% 16%;
+  --card-hover: 231 15% 22%;
+  --card-elevated: 231 15% 19%;
+  --card-foreground: 60 30% 98%;
+
+  --popover: 231 15% 15%;
+  --popover-foreground: 60 30% 96%;
+
+  --primary: 326 100% 74%;
+  --primary-foreground: 231 15% 12%;
+  --primary-hover: 326 100% 68%;
+  --primary-light: 326 100% 74% / 0.15;
+  --primary-glow: 326 100% 74% / 0.3;
+
+  --secondary: 231 12% 22%;
+  --secondary-foreground: 60 20% 90%;
+
+  --muted: 231 12% 18%;
+  --muted-foreground: 230 15% 65%;
+
+  --text-secondary: 230 20% 75%;
+  --text-muted: 230 15% 58%;
+
+  --accent: 191 97% 77%;
+  --accent-foreground: 231 15% 12%;
+  --accent-light: 191 97% 77% / 0.15;
+
+  --destructive: 0 100% 67%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-light: 0 100% 67% / 0.15;
+
+  --success: 135 94% 65%;
+  --success-foreground: 231 15% 12%;
+  --success-light: 135 94% 65% / 0.15;
+
+  --warning: 65 92% 76%;
+  --warning-foreground: 231 15% 12%;
+  --warning-light: 65 92% 76% / 0.15;
+
+  --border: 231 14% 24%;
+  --border-subtle: 231 14% 18%;
+  --border-focus: 326 100% 74%;
+
+  --input: 231 16% 14%;
+  --ring: 326 100% 74%;
+}
+
+/* --- Monokai Matrix ------------------------------------------------------ */
+html[data-theme="matrix"] {
+  --background: 120 10% 5%;
+  --foreground: 120 15% 95%;
+
+  --card: 120 8% 8.5%;
+  --card-hover: 120 8% 13%;
+  --card-elevated: 120 8% 11%;
+  --card-foreground: 120 15% 96%;
+
+  --popover: 120 8% 8%;
+  --popover-foreground: 120 15% 95%;
+
+  --primary: 142 76% 50%;
+  --primary-foreground: 120 10% 5%;
+  --primary-hover: 142 76% 44%;
+  --primary-light: 142 76% 50% / 0.15;
+  --primary-glow: 142 76% 50% / 0.3;
+
+  --secondary: 120 8% 16%;
+  --secondary-foreground: 120 12% 90%;
+
+  --muted: 120 8% 12%;
+  --muted-foreground: 120 8% 62%;
+
+  --text-secondary: 120 10% 72%;
+  --text-muted: 120 8% 52%;
+
+  --accent: 81 70% 54%;
+  --accent-foreground: 120 10% 5%;
+  --accent-light: 81 70% 54% / 0.15;
+
+  --destructive: 355 85% 62%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-light: 355 85% 62% / 0.15;
+
+  --success: 142 76% 50%;
+  --success-foreground: 120 10% 5%;
+  --success-light: 142 76% 50% / 0.15;
+
+  --warning: 45 95% 58%;
+  --warning-foreground: 120 10% 5%;
+  --warning-light: 45 95% 58% / 0.15;
+
+  --border: 120 10% 18%;
+  --border-subtle: 120 10% 12%;
+  --border-focus: 142 76% 50%;
+
+  --input: 120 10% 9%;
+  --ring: 142 76% 50%;
+}
+
+/* --- Nord Polar Night ---------------------------------------------------- */
+html[data-theme="nord"] {
+  --background: 220 16% 14%;
+  --foreground: 218 27% 94%;
+
+  --card: 220 16% 18%;
+  --card-hover: 220 16% 24%;
+  --card-elevated: 220 16% 21%;
+  --card-foreground: 218 27% 96%;
+
+  --popover: 220 16% 17%;
+  --popover-foreground: 218 27% 94%;
+
+  --primary: 193 43% 67%;
+  --primary-foreground: 220 16% 14%;
+  --primary-hover: 193 43% 60%;
+  --primary-light: 193 43% 67% / 0.15;
+  --primary-glow: 193 43% 67% / 0.3;
+
+  --secondary: 220 16% 24%;
+  --secondary-foreground: 218 20% 90%;
+
+  --muted: 220 16% 20%;
+  --muted-foreground: 218 14% 65%;
+
+  --text-secondary: 218 16% 75%;
+  --text-muted: 218 14% 56%;
+
+  --accent: 179 25% 65%;
+  --accent-foreground: 220 16% 14%;
+  --accent-light: 179 25% 65% / 0.15;
+
+  --destructive: 354 42% 56%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-light: 354 42% 56% / 0.15;
+
+  --success: 92 28% 65%;
+  --success-foreground: 220 16% 14%;
+  --success-light: 92 28% 65% / 0.15;
+
+  --warning: 40 71% 73%;
+  --warning-foreground: 220 16% 14%;
+  --warning-light: 40 71% 73% / 0.15;
+
+  --border: 220 16% 26%;
+  --border-subtle: 220 16% 20%;
+  --border-focus: 193 43% 67%;
+
+  --input: 220 16% 16%;
+  --ring: 193 43% 67%;
+}
+
+/* --- GitHub Dimmed ------------------------------------------------------- */
+html[data-theme="github-dimmed"] {
+  --background: 215 21% 13%;
+  --foreground: 210 20% 92%;
+
+  --card: 215 21% 16%;
+  --card-hover: 215 20% 21%;
+  --card-elevated: 215 21% 18%;
+  --card-foreground: 210 20% 94%;
+
+  --popover: 215 21% 15%;
+  --popover-foreground: 210 20% 92%;
+
+  --primary: 212 92% 62%;
   --primary-foreground: 0 0% 100%;
-  --primary-hover: 158 82% 35%;
-  --primary-light: 158 82% 43% / 0.18;
-  --primary-glow: 158 82% 43% / 0.4;
+  --primary-hover: 212 92% 55%;
+  --primary-light: 212 92% 62% / 0.15;
+  --primary-glow: 212 92% 62% / 0.3;
 
-  --secondary: 155 30% 16%;
-  --secondary-foreground: 155 20% 98%;
+  --secondary: 215 18% 21%;
+  --secondary-foreground: 210 18% 88%;
 
-  --muted: 155 30% 16%;
-  --muted-foreground: 155 20% 65%;
+  --muted: 215 18% 18%;
+  --muted-foreground: 215 12% 60%;
 
-  --accent: 174 88% 46%;
+  --text-secondary: 215 14% 70%;
+  --text-muted: 215 12% 52%;
+
+  --accent: 194 76% 55%;
   --accent-foreground: 0 0% 100%;
-  --accent-light: 174 88% 46% / 0.18;
+  --accent-light: 194 76% 55% / 0.15;
 
-  --border: 155 30% 16%;
-  --border-subtle: 155 30% 11%;
-  --border-focus: 158 82% 43%;
+  --destructive: 356 72% 63%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-light: 356 72% 63% / 0.15;
 
-  --input: 155 40% 7%;
-  --ring: 158 82% 43%;
+  --success: 137 55% 54%;
+  --success-foreground: 0 0% 100%;
+  --success-light: 137 55% 54% / 0.15;
+
+  --warning: 41 82% 59%;
+  --warning-foreground: 0 0% 100%;
+  --warning-light: 41 82% 59% / 0.15;
+
+  --border: 215 16% 25%;
+  --border-subtle: 215 16% 19%;
+  --border-focus: 212 92% 62%;
+
+  --input: 215 20% 14%;
+  --ring: 212 92% 62%;
 }
 
-/* DYNAMIC ACCENT SWITCHER */
-html[data-accent="cyan"] {
-  --primary: 188.7 94.5% 42.7%;
-  --primary-hover: 188.7 94.5% 35%;
-  --primary-light: 188.7 94.5% 42.7% / 0.15;
-  --primary-glow: 188.7 94.5% 42.7% / 0.35;
-  --ring: 188.7 94.5% 42.7%;
+/* --- Solarized Dark ------------------------------------------------------ */
+html[data-theme="solarized-dark"] {
+  --background: 192 100% 6%;
+  --foreground: 186 21% 72%;
+
+  --card: 192 81% 9.5%;
+  --card-hover: 192 60% 14%;
+  --card-elevated: 192 70% 11%;
+  --card-foreground: 186 21% 85%;
+
+  --popover: 192 81% 8.5%;
+  --popover-foreground: 186 21% 72%;
+
+  --primary: 205 69% 52%;
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: 205 69% 45%;
+  --primary-light: 205 69% 52% / 0.15;
+  --primary-glow: 205 69% 52% / 0.3;
+
+  --secondary: 192 50% 14%;
+  --secondary-foreground: 186 18% 75%;
+
+  --muted: 192 50% 11%;
+  --muted-foreground: 180 7% 50%;
+
+  --text-secondary: 186 12% 62%;
+  --text-muted: 180 7% 42%;
+
+  --accent: 175 59% 40%;
+  --accent-foreground: 0 0% 100%;
+  --accent-light: 175 59% 40% / 0.15;
+
+  --destructive: 1 71% 52%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-light: 1 71% 52% / 0.15;
+
+  --success: 68 100% 30%;
+  --success-foreground: 0 0% 100%;
+  --success-light: 68 100% 30% / 0.15;
+
+  --warning: 45 100% 35%;
+  --warning-foreground: 0 0% 100%;
+  --warning-light: 45 100% 35% / 0.15;
+
+  --border: 192 50% 16%;
+  --border-subtle: 192 50% 11%;
+  --border-focus: 205 69% 52%;
+
+  --input: 192 70% 8%;
+  --ring: 205 69% 52%;
 }
-html[data-accent="emerald"] {
-  --primary: 158 82% 43%;
-  --primary-hover: 158 82% 35%;
-  --primary-light: 158 82% 43% / 0.15;
-  --primary-glow: 158 82% 43% / 0.35;
-  --ring: 158 82% 43%;
+
+/* --- Catppuccin Latte (Warm Light) --------------------------------------- */
+html[data-theme="latte"] {
+  --background: 40 25% 96%;
+  --foreground: 234 16% 35%;
+
+  --card: 0 0% 100%;
+  --card-hover: 40 20% 93%;
+  --card-elevated: 0 0% 100%;
+  --card-foreground: 234 16% 25%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 234 16% 35%;
+
+  --primary: 217 92% 58%;
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: 217 92% 50%;
+  --primary-light: 217 92% 58% / 0.12;
+  --primary-glow: 217 92% 58% / 0.22;
+
+  --secondary: 40 18% 90%;
+  --secondary-foreground: 234 14% 30%;
+
+  --muted: 40 18% 91%;
+  --muted-foreground: 232 10% 50%;
+
+  --text-secondary: 232 12% 42%;
+  --text-muted: 232 10% 55%;
+
+  --accent: 173 58% 39%;
+  --accent-foreground: 0 0% 100%;
+  --accent-light: 173 58% 39% / 0.12;
+
+  --destructive: 347 70% 54%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-light: 347 70% 54% / 0.12;
+
+  --success: 109 58% 40%;
+  --success-foreground: 0 0% 100%;
+  --success-light: 109 58% 40% / 0.12;
+
+  --warning: 35 77% 49%;
+  --warning-foreground: 0 0% 100%;
+  --warning-light: 35 77% 49% / 0.12;
+
+  --border: 40 16% 85%;
+  --border-subtle: 40 16% 90%;
+  --border-focus: 217 92% 58%;
+
+  --input: 0 0% 100%;
+  --ring: 217 92% 58%;
 }
+
+/* --- Accent overrides ---------------------------------------------------- */
+html[data-accent="teal"] {
+  --primary: 182 80% 42%;
+  --primary-hover: 182 80% 35%;
+  --primary-light: 182 80% 42% / 0.14;
+  --primary-glow: 182 80% 42% / 0.25;
+  --border-focus: 182 80% 42%;
+  --ring: 182 80% 42%;
+}
+
 html[data-accent="violet"] {
-  --primary: 263.4 70% 50.4%;
-  --primary-hover: 263.4 70% 42%;
-  --primary-light: 263.4 70% 50.4% / 0.15;
-  --primary-glow: 263.4 70% 50.4% / 0.35;
-  --ring: 263.4 70% 50.4%;
+  --primary: 265 85% 65%;
+  --primary-hover: 265 85% 58%;
+  --primary-light: 265 85% 65% / 0.14;
+  --primary-glow: 265 85% 65% / 0.25;
+  --border-focus: 265 85% 65%;
+  --ring: 265 85% 65%;
 }
-html[data-accent="rose"] {
-  --primary: 346.8 77.2% 49.8%;
-  --primary-hover: 346.8 77.2% 42%;
-  --primary-light: 346.8 77.2% 49.8% / 0.15;
-  --primary-glow: 346.8 77.2% 49.8% / 0.35;
-  --ring: 346.8 77.2% 49.8%;
+
+html[data-accent="emerald"] {
+  --primary: 152 76% 46%;
+  --primary-hover: 152 76% 40%;
+  --primary-light: 152 76% 46% / 0.14;
+  --primary-glow: 152 76% 46% / 0.25;
+  --border-focus: 152 76% 46%;
+  --ring: 152 76% 46%;
 }
+
 html[data-accent="amber"] {
   --primary: 38 92% 50%;
-  --primary-hover: 38 92% 42%;
-  --primary-light: 38 92% 50% / 0.15;
-  --primary-glow: 38 92% 50% / 0.35;
+  --primary-hover: 38 92% 44%;
+  --primary-light: 38 92% 50% / 0.14;
+  --primary-glow: 38 92% 50% / 0.25;
+  --border-focus: 38 92% 50%;
   --ring: 38 92% 50%;
 }
 
+html[data-accent="cyan"] {
+  --primary: 191 91% 48%;
+  --primary-hover: 191 91% 42%;
+  --primary-light: 191 91% 48% / 0.14;
+  --primary-glow: 191 91% 48% / 0.25;
+  --border-focus: 191 91% 48%;
+  --ring: 191 91% 48%;
+}
+
 /* ==========================================================================
-   GLOBAL RESET & TYPOGRAPHY SETTINGS
+   BASE
    ========================================================================== */
 
 * {
@@ -272,25 +538,88 @@ html[data-accent="amber"] {
   border-color: hsl(var(--border));
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  letter-spacing: -0.012em;
+  letter-spacing: -0.011em;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-image: 
-    radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.08) 0%, transparent 60%),
-    radial-gradient(hsl(var(--border) / 0.4) 1px, transparent 1px);
-  background-size: 100% 100%, 24px 24px;
-  background-position: top center, center top;
+  /* No decorative dot grid or radial wash: on a dense findings view it
+     competed with the data for attention. */
 }
 
-/* Subtle, refined scrollbar */
+/* Figures in tables and meters must align column to column. */
+table,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Headings and typography scales */
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+}
+
+h1 {
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  font-weight: 700;
+}
+
+h2 {
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+h3 {
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+h4, h5, h6 {
+  letter-spacing: -0.015em;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+p {
+  line-height: 1.65;
+}
+
+/* Every interactive element gets a visible keyboard state. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: calc(var(--radius) - 1px);
+}
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+img, svg, video, canvas, audio, iframe, embed, object {
+  max-width: 100%;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.25);
+}
+
+/* ==========================================================================
+   SCROLLBARS
+   ========================================================================== */
+
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -298,51 +627,79 @@ body {
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
   border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground));
+  background: hsl(var(--muted-foreground) / 0.5);
+  background-clip: content-box;
 }
 
-/* Linear-grade card reflection shine */
-.card-shine {
-  position: relative;
-  overflow: hidden;
-}
-.card-shine::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), transparent);
-  pointer-events: none;
+/* ==========================================================================
+   MOTION
+
+   fadeIn and scaleIn were referenced on nearly every page and in the modals,
+   but no keyframes or Tailwind animation config ever defined them, so the
+   classes did nothing at all. Defined here, and disabled outright for anyone
+   who has asked for reduced motion.
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
 }
 
-/* Authentic Raycast / Warp Terminal */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.18s ease-out both;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.14s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   COMPONENTS
+   ========================================================================== */
+
 .terminal-window {
   background: hsl(var(--card-elevated));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  font-family: var(--font-geist-mono), monospace;
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  box-shadow: 0 12px 28px -18px rgb(0 0 0 / 0.55);
   overflow: hidden;
 }
 
-/* cmdk styling */
+/* cmdk command palette */
 [cmdk-root] {
   max-width: 640px;
   width: 100%;
   background: hsl(var(--card-elevated));
   border: 1px solid hsl(var(--border));
   border-radius: calc(var(--radius) + 4px);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 48px -20px rgb(0 0 0 / 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
   overflow: hidden;
 }
 
 [cmdk-input] {
   width: 100%;
-  padding: 16px 20px;
+  padding: 14px 16px;
   font-size: 14px;
   background: transparent;
   border: none;
@@ -354,28 +711,79 @@ body {
 [cmdk-item] {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: calc(var(--radius) - 2px);
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: calc(var(--radius) + 2px);
   font-size: 13px;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
   user-select: none;
-  transition: all 0.12s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
   margin: 2px 6px;
 }
 
-[cmdk-item][data-selected="true"] {
+[cmdk-item][data-selected='true'] {
   background: hsl(var(--primary-light));
   color: hsl(var(--foreground));
   font-weight: 500;
 }
 
 [cmdk-group-heading] {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   color: hsl(var(--muted-foreground));
   padding: 10px 12px 4px;
+}
+
+/* ==========================================================================
+   APPLE-INSPIRED UTILITIES & SHIMMER
+   ========================================================================== */
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: hsl(var(--muted) / 0.6);
+}
+
+.shimmer::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.08) 20%,
+    rgba(255, 255, 255, 0.15) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmerSweep 2s infinite;
+  content: '';
+}
+
+@keyframes shimmerSweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.apple-card {
+  background: hsl(var(--card) / 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 4px 20px -4px rgba(0, 0, 0, 0.3);
+}
+
+.apple-bevel {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.apple-bevel-active:active {
+  transform: scale(0.97);
+  box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.35);
 }

@@ -16,18 +16,18 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const variants = {
-    primary: 'bg-primary/10 text-primary border-primary/25',
-    secondary: 'bg-accent/10 text-accent border-accent/25',
-    success: 'bg-success/10 text-success border-success/25',
-    warning: 'bg-warning/10 text-warning border-warning/25',
-    danger: 'bg-destructive/10 text-destructive border-destructive/25',
+    primary: 'bg-primary/10 text-primary border-primary/20',
+    secondary: 'bg-secondary text-secondary-foreground border-border',
+    success: 'bg-success-light text-success border-success/20',
+    warning: 'bg-warning-light text-warning border-warning/20',
+    danger: 'bg-destructive-light text-destructive border-destructive/20',
     outline: 'bg-transparent text-muted-foreground border-border',
-    neutral: 'bg-muted text-muted-foreground border-border/60',
+    neutral: 'bg-muted text-muted-foreground border-border',
   };
 
   const dotColors = {
     primary: 'bg-primary',
-    secondary: 'bg-accent',
+    secondary: 'bg-muted-foreground',
     success: 'bg-success',
     warning: 'bg-warning',
     danger: 'bg-destructive',
@@ -36,21 +36,26 @@ export function Badge({
   };
 
   const sizes = {
-    sm: 'text-[10px] px-2 py-0.5 font-medium',
-    md: 'text-xs px-2.5 py-0.5 font-medium',
+    sm: 'text-[10px] px-2.5 py-1 gap-1.5 leading-none font-semibold',
+    md: 'text-[11px] px-3 py-1 gap-2 leading-none font-medium',
   };
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border transition-colors select-none font-mono',
+        'inline-flex items-center rounded-md border tracking-wide select-none whitespace-nowrap',
         variants[variant],
         sizes[size],
         className
       )}
       {...props}
     >
-      {dot && <span className={cn('h-1.5 w-1.5 rounded-full', dotColors[variant])} />}
+      {dot && (
+        <span className="relative flex h-[6px] w-[6px] shrink-0">
+          <span className={cn('absolute inline-flex h-full w-full animate-ping rounded-full opacity-60', dotColors[variant])} />
+          <span className={cn('relative inline-flex h-[6px] w-[6px] rounded-full', dotColors[variant])} />
+        </span>
+      )}
       {children}
     </span>
   );

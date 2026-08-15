@@ -25,28 +25,28 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center rounded-lg font-medium text-xs tracking-tight transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:pointer-events-none select-none';
+      'inline-flex items-center justify-center rounded-lg font-medium tracking-tight transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:opacity-40 disabled:pointer-events-none select-none active:scale-[0.97] cursor-pointer whitespace-nowrap leading-none';
 
     const variants = {
       primary:
-        'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm',
+        'bg-foreground text-background hover:bg-foreground/90 border border-foreground/80 shadow-xs font-semibold',
       secondary:
-        'bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border/60',
+        'bg-card text-foreground hover:bg-card-hover border border-border/60 shadow-xs',
       outline:
-        'bg-transparent text-foreground hover:bg-muted border border-border',
+        'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-border/60 hover:border-zinc-600',
       ghost:
-        'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted',
+        'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50',
       danger:
-        'bg-destructive/15 text-destructive hover:bg-destructive hover:text-destructive-foreground border border-destructive/30',
+        'bg-red-500/8 text-red-400 hover:bg-red-500/15 border border-red-500/15 hover:border-red-500/30 font-medium',
       glow:
-        'bg-primary text-primary-foreground shadow-glow hover:brightness-105',
+        'bg-foreground text-background hover:bg-foreground/90 border border-foreground/80 shadow-[0_0_16px_-3px_rgba(255,255,255,0.25)] font-semibold',
     };
 
     const sizes = {
-      xs: 'h-7 px-2.5 text-[11px] gap-1.5',
-      sm: 'h-8 px-3 text-xs gap-1.5',
-      md: 'h-9 px-4 text-xs gap-2',
-      lg: 'h-10 px-5 text-sm gap-2.5',
+      xs: 'h-7 px-2.5 text-[11px] gap-1.5 rounded-md',
+      sm: 'h-8 px-3.5 text-[12px] gap-2 rounded-lg',
+      md: 'h-9 px-4 text-[13px] gap-2 rounded-lg',
+      lg: 'h-10 px-5 text-[14px] gap-2.5 rounded-lg font-semibold',
     };
 
     return (

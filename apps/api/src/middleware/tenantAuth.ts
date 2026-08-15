@@ -1,21 +1,27 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { verifyJwt, hashApiKey, createTenantContext } from '@codeguard/auth';
+import { verifyJwt, hashApiKey, createTenantContext, type JwtPayload } from '@codeguard/auth';
 import { db, apiKeys } from '@codeguard/database';
 import { eq } from 'drizzle-orm';
+import { logger } from '@codeguard/logger';
 import type { TenantContext } from '@codeguard/types';
 
 declare module 'fastify' {
   interface FastifyRequest {
     tenant?: TenantContext;
+    auth?: JwtPayload;
   }
 }
 
 /**
- * Authentication and Tenant Isolation Middleware
- * Verifies Bearer JWT token or X-API-Key header and attaches TenantContext to request
+ * Resolve the caller from an X-API-Key header or an Authorization Bearer JWT.
+ *
+ * Fails closed. There is deliberately no unauthenticated fallback: an earlier
+ * version granted OWNER on a hardcoded organization when no credentials were
+ * present, and granted OWNER on any organization named in `?organizationId=`,
+ * which made every tenant-scoped route publicly readable and writable.
  */
 export async function authenticateTenant(request: FastifyRequest, reply: FastifyReply) {
-  // 1. Check API Key header
+  // 1. API key (service-to-service / CI)
   const apiKeyHeader = request.headers['x-api-key'] as string | undefined;
   if (apiKeyHeader) {
     const hashedKey = hashApiKey(apiKeyHeader);
@@ -29,33 +35,102 @@ export async function authenticateTenant(request: FastifyRequest, reply: Fastify
       return reply.status(401).send({ error: 'Unauthorized', message: 'Invalid API Key' });
     }
 
+    if (foundKey.expiresAt && foundKey.expiresAt.getTime() < Date.now()) {
+      return reply.status(401).send({ error: 'Unauthorized', message: 'API Key has expired' });
+    }
+
     request.tenant = createTenantContext(foundKey.organizationId, undefined, 'ADMIN', true);
     return;
   }
 
-  // 2. Check Authorization Bearer JWT header
+  // 2. Bearer JWT (interactive session)
   const authHeader = request.headers.authorization;
   if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
+    const token = authHeader.slice(7).trim();
     const decoded = await verifyJwt(token);
 
     if (!decoded) {
       return reply.status(401).send({ error: 'Unauthorized', message: 'Invalid or expired session token' });
     }
 
-    request.tenant = createTenantContext(decoded.orgId || '00000000-0000-0000-0000-000000000001', decoded.sub, (decoded.role as any) || 'MEMBER', false);
+    // A token with no organization cannot address organization-scoped resources.
+    // Individual customers without an org use the /customer/* portal routes instead.
+    if (!decoded.orgId) {
+      return reply
+        .status(403)
+        .send({ error: 'Forbidden', message: 'Session has no organization context' });
+    }
+
+    request.auth = decoded;
+    request.tenant = createTenantContext(decoded.orgId, decoded.sub, (decoded.role as any) || 'MEMBER', false);
     return;
   }
 
-  // Allow unauthenticated fallback for development demo or return 401 if strict
-  // For dev convenience if no header, extract orgId query param if present
-  const queryOrgId = (request.query as { organizationId?: string })?.organizationId;
-  if (queryOrgId) {
-    request.tenant = createTenantContext(queryOrgId, 'dev-user-demo', 'OWNER', false);
-    return;
+  return reply
+    .status(401)
+    .send({ error: 'Unauthorized', message: 'Authentication required: provide a Bearer token or X-API-Key' });
+}
+
+/**
+ * Guard for platform-staff-only routes (the /admin/* surface).
+ *
+ * Requires a Bearer JWT carrying isPlatformAdmin. API keys are org-scoped
+ * credentials and are never accepted here.
+ */
+export async function requirePlatformAdmin(request: FastifyRequest, reply: FastifyReply) {
+  const authHeader = request.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return reply
+      .status(401)
+      .send({ error: 'Unauthorized', message: 'Platform administrator authentication required' });
   }
 
-  // If endpoint requires auth and no credentials provided
-  // We can default to a standard demo tenant context in dev mode
-  request.tenant = createTenantContext('00000000-0000-0000-0000-000000000001', 'demo-user', 'OWNER', false);
+  const decoded = await verifyJwt(authHeader.slice(7).trim());
+  if (!decoded) {
+    return reply.status(401).send({ error: 'Unauthorized', message: 'Invalid or expired session token' });
+  }
+
+  if (!decoded.isPlatformAdmin) {
+    logger.warn(
+      { userId: decoded.sub, url: request.url },
+      'Non-admin principal attempted to access a platform admin route'
+    );
+    return reply.status(403).send({ error: 'Forbidden', message: 'Platform administrator privileges required' });
+  }
+
+  request.auth = decoded;
+  if (decoded.orgId) {
+    request.tenant = createTenantContext(decoded.orgId, decoded.sub, (decoded.role as any) || 'ADMIN', false);
+  }
+}
+
+/**
+ * Resolve the organization a request may act on.
+ *
+ * Callers may name an organization explicitly, but only one they already hold a
+ * credential for; anything else is rejected rather than silently honoured.
+ * Platform admins may address any organization.
+ */
+export function resolveOrganizationId(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  requested?: string
+): string | null {
+  const tenantOrgId = request.tenant?.organizationId;
+
+  if (!tenantOrgId) {
+    reply.status(401).send({ error: 'Unauthorized', message: 'Authentication required' });
+    return null;
+  }
+
+  if (requested && requested !== tenantOrgId && !request.auth?.isPlatformAdmin) {
+    logger.warn(
+      { requested, tenantOrgId, userId: request.tenant?.userId },
+      'Cross-tenant access attempt blocked'
+    );
+    reply.status(403).send({ error: 'Forbidden', message: 'Cannot access another organization' });
+    return null;
+  }
+
+  return requested && request.auth?.isPlatformAdmin ? requested : tenantOrgId;
 }

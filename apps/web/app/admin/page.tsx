@@ -2,283 +2,166 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/lib/store';
+import { apiClient, ApiError } from '@/lib/client';
+import { useResource } from '@/lib/useResource';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Progress } from '@/components/ui/Progress';
 import {
-  Users,
   Search,
-  Filter,
   DollarSign,
   TrendingUp,
   Activity,
   ShieldAlert,
-  ArrowUpRight,
-  Sparkles,
-  Key,
   Building2,
-  Mail,
-  ShieldCheck,
-  Ban,
   CheckCircle2,
-  X,
-  ExternalLink,
+  Download,
+  Plus,
+  ArrowUpRight,
 } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { toast } from 'sonner';
-
-interface CustomerAccount {
-  id: string;
-  name: string;
-  domain: string;
-  ownerEmail: string;
-  tier: 'ENTERPRISE' | 'PRO' | 'STUDENT';
-  mrr: number;
-  seatsUsed: number;
-  seatsTotal: number;
-  monthlyReviews: number;
-  quotaLimit: number;
-  status: 'ACTIVE' | 'TRIAL' | 'DELINQUENT';
-  riskScore: 'LOW' | 'MEDIUM' | 'HIGH';
-  joinedAt: string;
-  apiKey: string;
-}
-
-const MOCK_CUSTOMERS: CustomerAccount[] = [
-  {
-    id: 'cust-901',
-    name: 'Acme Payments Inc.',
-    domain: 'acme.com',
-    ownerEmail: 'finance-lead@acme.com',
-    tier: 'ENTERPRISE',
-    mrr: 49900,
-    seatsUsed: 42,
-    seatsTotal: 100,
-    monthlyReviews: 1420,
-    quotaLimit: 5000,
-    status: 'ACTIVE',
-    riskScore: 'LOW',
-    joinedAt: '2025-11-12T10:00:00Z',
-    apiKey: 'cg_live_99a8f21bc90a88e17823',
-  },
-  {
-    id: 'cust-902',
-    name: 'Stripe Fintech Labs',
-    domain: 'fintech-labs.io',
-    ownerEmail: 'alex@fintech-labs.io',
-    tier: 'ENTERPRISE',
-    mrr: 49900,
-    seatsUsed: 88,
-    seatsTotal: 100,
-    monthlyReviews: 4890,
-    quotaLimit: 5000,
-    status: 'ACTIVE',
-    riskScore: 'LOW',
-    joinedAt: '2026-01-05T14:30:00Z',
-    apiKey: 'cg_live_77182ba891230198a287',
-  },
-  {
-    id: 'cust-903',
-    name: 'Elena Rostova (Solo Engineer)',
-    domain: 'elena.dev',
-    ownerEmail: 'elena@codeguard.dev',
-    tier: 'PRO',
-    mrr: 2900,
-    seatsUsed: 1,
-    seatsTotal: 1,
-    monthlyReviews: 184,
-    quotaLimit: 500,
-    status: 'ACTIVE',
-    riskScore: 'LOW',
-    joinedAt: '2026-02-14T08:15:00Z',
-    apiKey: 'cg_live_11823901a88200192bc9',
-  },
-  {
-    id: 'cust-904',
-    name: 'Stanford CodeClub',
-    domain: 'stanford.edu',
-    ownerEmail: 'ari@stanford.edu',
-    tier: 'STUDENT',
-    mrr: 0,
-    seatsUsed: 1,
-    seatsTotal: 1,
-    monthlyReviews: 42,
-    quotaLimit: 100,
-    status: 'ACTIVE',
-    riskScore: 'LOW',
-    joinedAt: '2026-03-01T12:00:00Z',
-    apiKey: 'cg_live_student_882019a823',
-  },
-  {
-    id: 'cust-905',
-    name: 'CyberDefend Security',
-    domain: 'cyberdefend.co',
-    ownerEmail: 'ops@cyberdefend.co',
-    tier: 'ENTERPRISE',
-    mrr: 49900,
-    seatsUsed: 12,
-    seatsTotal: 25,
-    monthlyReviews: 320,
-    quotaLimit: 2500,
-    status: 'DELINQUENT',
-    riskScore: 'HIGH',
-    joinedAt: '2025-10-20T16:45:00Z',
-    apiKey: 'cg_live_99281a82300198bc72',
-  },
-];
+import { IconBadge } from '@/components/ui/IconBadge';
 
 export default function AdminCrmPage() {
-  const { setPersonaRole } = useApp();
-  const [customers, setCustomers] = useState<CustomerAccount[]>(MOCK_CUSTOMERS);
+  const { persona, setPersonaRole } = useApp();
+  const dashboard = useResource(() => apiClient.adminDashboard(), [persona.role]);
+  const customersResource = useResource(() => apiClient.adminCustomers(), [persona.role]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTier, setSelectedTier] = useState<string>('ALL');
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerAccount | null>(null);
+
+  const customers: any[] = customersResource.data?.customers ?? [];
+  const kpis = dashboard.data?.kpis;
 
   const filteredCustomers = customers.filter((c) => {
-    const matchesSearch =
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.domain.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.ownerEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.id.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesTier = selectedTier === 'ALL' || c.tier === selectedTier;
+    const haystack = [c.name, c.email, c.id, c.primaryUser?.email].filter(Boolean).join(' ').toLowerCase();
+    const matchesSearch = haystack.includes(searchQuery.toLowerCase());
+    const matchesTier =
+      selectedTier === 'ALL' ||
+      c.currentPlan?.tier === selectedTier ||
+      (selectedTier === 'ENTERPRISE' && c.currentPlan?.tier === 'ORGANIZATION') ||
+      (selectedTier === 'STUDENT' && (c.currentPlan?.tier === 'BASIC' || c.currentPlan?.tier === 'FREE' || c.currentPlan?.tier === 'STUDENT'));
     return matchesSearch && matchesTier;
   });
 
-  const totalARR = customers.reduce((acc, c) => acc + c.mrr * 12, 0);
-
-  const handleRegenerateKey = (id: string) => {
-    const newKey = `cg_live_${Math.random().toString(36).substring(2, 12)}${Math.random().toString(36).substring(2, 12)}`;
-    setCustomers((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, apiKey: newKey } : c))
-    );
-    if (selectedCustomer && selectedCustomer.id === id) {
-      setSelectedCustomer((prev) => (prev ? { ...prev, apiKey: newKey } : null));
-    }
-    toast.success('Regenerated live API key');
-  };
-
-  const handleToggleStatus = (id: string) => {
-    setCustomers((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          const nextStatus = c.status === 'ACTIVE' ? 'DELINQUENT' : 'ACTIVE';
-          toast.success(`Account status changed to ${nextStatus}`);
-          return { ...c, status: nextStatus };
-        }
-        return c;
-      })
-    );
-  };
+  const totalARR = (kpis?.arr ?? 0) * 100;
 
   return (
-    <div className="space-y-6">
-      {/* 1. CRM HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <Badge variant="primary" size="sm">SUPER ADMIN CRM</Badge>
-            <span className="text-xs text-muted-foreground">•</span>
-            <span className="text-xs text-muted-foreground font-mono">Multi-Tenant Management</span>
+    <div className="space-y-8 animate-fadeIn">
+      <PageHeader
+        title="Customers & Tenants"
+        description="Subscriptions, seat allocation, and account status across all platform tenants."
+        actions={
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<Download className="w-3.5 h-3.5" />}
+              onClick={() => toast.info('Exporting customer CSV…')}
+            >
+              Export CSV
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+              onClick={() => toast.success('Provisioning new tenant…')}
+            >
+              Provision Tenant
+            </Button>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2 mt-1">
-            <Users className="w-5 h-5 text-accent" />
-            <span>Customer & Tenant Directory</span>
-          </h1>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Manage organization subscriptions, seat allocations, API keys, and emergency overrides across all tenants.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => toast.info('Exporting customer CRM CSV...')}>
-            Export CSV
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => toast.success('Provisioning new tenant account...')}>
-            + Provision Tenant
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* 2. REVENUE & TENANT METRICS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="font-medium">Annual Recurring Revenue (ARR)</span>
-            <DollarSign className="w-3.5 h-3.5 text-primary" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card hoverable className="p-7 flex flex-col justify-between space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest font-mono">Annual Revenue (ARR)</span>
+            <IconBadge color="emerald" size="xs">
+              <DollarSign />
+            </IconBadge>
           </div>
-          <div className="text-2xl font-bold text-foreground">
+          <div className="text-3xl font-bold tracking-tight text-foreground tabular">
             {formatCurrency(totalARR)}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-success font-medium">
-            <TrendingUp className="w-3 h-3" />
+          <div className="flex items-center gap-1.5 text-[12px] text-success font-medium">
+            <TrendingUp className="w-3.5 h-3.5" />
             <span>↑ 24.2% YoY growth</span>
           </div>
         </Card>
 
-        <Card className="p-4 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="font-medium">Active Tenants</span>
-            <Building2 className="w-3.5 h-3.5 text-accent" />
+        <Card hoverable className="p-7 flex flex-col justify-between space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest font-mono">Active Tenants</span>
+            <IconBadge color="slate" size="xs">
+              <Building2 />
+            </IconBadge>
           </div>
-          <div className="text-2xl font-bold text-foreground">
-            {customers.length} Accounts
+          <div className="text-3xl font-bold tracking-tight text-foreground tabular">
+            {kpis?.totalCustomers ?? customers.length} Accounts
           </div>
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <span>100% SLA uptime</span>
-          </div>
-        </Card>
-
-        <Card className="p-4 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="font-medium">Total Monthly AI Reviews</span>
-            <Activity className="w-3.5 h-3.5 text-primary" />
-          </div>
-          <div className="text-2xl font-bold text-foreground">
-            {customers.reduce((acc, c) => acc + c.monthlyReviews, 0).toLocaleString()}
-          </div>
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
-            <span>Gemini 3.7 Flash Pool</span>
+          <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground font-mono">
+            <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+            <span>{kpis?.activeSubscribers ?? 0} active subscribers</span>
           </div>
         </Card>
 
-        <Card className="p-4 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="font-medium">High-Risk Accounts</span>
-            <ShieldAlert className="w-3.5 h-3.5 text-destructive" />
+        <Card hoverable className="p-7 flex flex-col justify-between space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest font-mono">Trial Subscribers</span>
+            <IconBadge color="slate" size="xs">
+              <Activity />
+            </IconBadge>
           </div>
-          <div className="text-2xl font-bold text-destructive">
-            {customers.filter((c) => c.status === 'DELINQUENT').length} Delinquent
+          <div className="text-3xl font-bold tracking-tight text-foreground tabular">
+            {(kpis?.trialSubscribers ?? 0).toLocaleString()}
           </div>
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <span>Automated dunning active</span>
+          <div className="flex items-center gap-1 text-[12px] text-muted-foreground font-mono">
+            <span>{kpis?.totalUsers ?? 0} users across {kpis?.totalOrganizations ?? 0} orgs</span>
+          </div>
+        </Card>
+
+        <Card hoverable className="p-7 flex flex-col justify-between space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest font-mono">High-Risk Accounts</span>
+            <IconBadge color="ruby" size="xs">
+              <ShieldAlert />
+            </IconBadge>
+          </div>
+          <div className="text-3xl font-bold tracking-tight text-destructive tabular">
+            {customers.filter((c) => c.status !== 'ACTIVE').length} Suspended
+          </div>
+          <div className="flex items-center gap-1 text-[12px] text-muted-foreground font-mono">
+            <span>{kpis?.churnRate ?? '0.0'}% churn rate</span>
           </div>
         </Card>
       </div>
 
       {/* 3. SEARCH & FILTER BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="relative max-w-md w-full">
-          <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search by company, domain, email, or tenant ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-input border border-border focus:border-ring text-xs text-foreground outline-none transition-colors"
+            aria-label="Search tenants"
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-card border border-border hover:border-border-focus focus:border-border-focus focus:ring-1 focus:ring-ring/30 text-[13px] text-foreground outline-none transition-all shadow-xs"
           />
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 bg-card p-1 rounded-lg border border-border">
           {(['ALL', 'ENTERPRISE', 'PRO', 'STUDENT'] as const).map((tier) => (
             <button
               key={tier}
               onClick={() => setSelectedTier(tier)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-[11px] font-semibold tracking-wide transition-all cursor-pointer ${
                 selectedTier === tier
-                  ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
-                  : 'bg-muted text-muted-foreground hover:text-foreground'
+                  ? 'bg-secondary text-foreground border border-border shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
               {tier}
@@ -288,88 +171,56 @@ export default function AdminCrmPage() {
       </div>
 
       {/* 4. CUSTOMERS DIRECTORY TABLE */}
-      <Card className="p-0 overflow-hidden">
+      <Card className="p-7 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h2 className="text-[16px] font-semibold text-foreground">Tenant Directory</h2>
+            <p className="text-[13px] text-muted-foreground">Detailed subscriber records with active entitlements.</p>
+          </div>
+          <span className="font-mono text-[12px] text-muted-foreground">{filteredCustomers.length} Accounts</span>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full border-collapse text-[13px]">
             <thead>
-              <tr className="border-b border-border bg-muted/30 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                <th className="py-2.5 px-4">Organization & Owner</th>
-                <th className="py-2.5 px-4">Tier & MRR</th>
-                <th className="py-2.5 px-4">Seats Allocated</th>
-                <th className="py-2.5 px-4">Monthly Reviews</th>
-                <th className="py-2.5 px-4">Status</th>
-                <th className="py-2.5 px-4 text-right">Actions</th>
+              <tr className="border-b border-border/40">
+                <th className="text-left py-3.5 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Organization & Owner</th>
+                <th className="text-left py-3.5 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Plan</th>
+                <th className="text-left py-3.5 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Type</th>
+                <th className="text-left py-3.5 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Subscription</th>
+                <th className="text-left py-3.5 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Status</th>
+                <th className="text-right py-3.5 px-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/40">
-              {filteredCustomers.map((cust) => (
-                <tr
-                  key={cust.id}
-                  onClick={() => setSelectedCustomer(cust)}
-                  className="hover:bg-muted/30 transition-colors cursor-pointer group"
-                >
-                  <td className="py-3 px-4">
-                    <div className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                      {cust.name}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground font-mono">
-                      {cust.domain} • {cust.ownerEmail}
+            <tbody>
+              {filteredCustomers.map((c: any) => (
+                <tr key={c.id} className="border-b border-border/20 hover:bg-card-hover/50 transition-colors">
+                  <td className="py-4 px-4">
+                    <div className="space-y-0.5">
+                      <div className="font-semibold text-foreground text-[14px]">{c.name}</div>
+                      <div className="text-[12px] text-muted-foreground font-mono">{c.email}</div>
                     </div>
                   </td>
-
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-1.5">
-                      <Badge
-                        variant={cust.tier === 'ENTERPRISE' ? 'primary' : cust.tier === 'PRO' ? 'secondary' : 'neutral'}
-                        size="sm"
-                      >
-                        {cust.tier}
-                      </Badge>
-                      <span className="font-mono text-foreground font-medium">
-                        {formatCurrency(cust.mrr)}/mo
-                      </span>
-                    </div>
-                  </td>
-
-                  <td className="py-3 px-4 font-mono text-[11px]">
-                    <div className="text-foreground">
-                      {cust.seatsUsed} / {cust.seatsTotal} seats
-                    </div>
-                    <Progress
-                      value={(cust.seatsUsed / cust.seatsTotal) * 100}
-                      size="sm"
-                      className="w-24 mt-1"
-                    />
-                  </td>
-
-                  <td className="py-3 px-4 font-mono text-[11px]">
-                    <div className="text-foreground">
-                      {cust.monthlyReviews} / {cust.quotaLimit}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">
-                      {Math.round((cust.monthlyReviews / cust.quotaLimit) * 100)}% quota
-                    </span>
-                  </td>
-
-                  <td className="py-3 px-4">
-                    <Badge
-                      variant={cust.status === 'ACTIVE' ? 'success' : 'danger'}
-                      size="sm"
-                      dot
-                    >
-                      {cust.status}
+                  <td className="py-4 px-4">
+                    <Badge variant={c.currentPlan?.tier === 'ORGANIZATION' ? 'primary' : c.currentPlan?.tier === 'PRO' ? 'secondary' : 'neutral'} size="sm">
+                      {c.currentPlan?.name ?? 'Free Tier'}
                     </Badge>
                   </td>
-
-                  <td className="py-3 px-4 text-right">
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedCustomer(cust);
-                      }}
-                    >
+                  <td className="py-4 px-4 text-muted-foreground text-[12px]">
+                    {c.type}
+                  </td>
+                  <td className="py-4 px-4">
+                    <Badge variant={c.subscription?.status === 'ACTIVE' ? 'success' : 'warning'} size="sm" dot>
+                      {c.subscription?.status ?? 'ACTIVE'}
+                    </Badge>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className="text-[12px] font-medium text-foreground">
+                      {c.status}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-right">
+                    <Button variant="outline" size="xs" onClick={() => toast.info(`Viewing tenant details for ${c.name}`)}>
                       Manage
                     </Button>
                   </td>
@@ -379,134 +230,6 @@ export default function AdminCrmPage() {
           </table>
         </div>
       </Card>
-
-      {/* 5. SLIDE-OVER CUSTOMER 360 DRAWER */}
-      {selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-background/80 backdrop-blur-sm animate-fadeIn">
-          <div
-            className="fixed inset-0"
-            onClick={() => setSelectedCustomer(null)}
-            aria-hidden="true"
-          />
-
-          <div className="relative z-10 w-full max-w-lg bg-card-elevated border-l border-border h-full overflow-y-auto p-6 space-y-6 shadow-2xl animate-scaleIn">
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-border/60 pb-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={selectedCustomer.status === 'ACTIVE' ? 'success' : 'danger'} size="sm" dot>
-                    {selectedCustomer.status}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground font-mono">{selectedCustomer.id}</span>
-                </div>
-                <h2 className="text-lg font-bold text-foreground mt-1">{selectedCustomer.name}</h2>
-                <p className="text-xs text-muted-foreground">{selectedCustomer.ownerEmail}</p>
-              </div>
-
-              <button
-                onClick={() => setSelectedCustomer(null)}
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  setPersonaRole('org');
-                  toast.success(`Impersonating ${selectedCustomer.name}`);
-                  setSelectedCustomer(null);
-                }}
-              >
-                <Sparkles className="w-3.5 h-3.5 mr-1" /> Impersonate Tenant
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleToggleStatus(selectedCustomer.id)}
-              >
-                {selectedCustomer.status === 'ACTIVE' ? (
-                  <>
-                    <Ban className="w-3.5 h-3.5 mr-1 text-destructive" /> Suspend Tenant
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-success" /> Activate Tenant
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* Subscription & MRR Details */}
-            <Card className="p-4 space-y-2.5">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Subscription Plan
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-bold text-foreground">{selectedCustomer.tier} PLAN</div>
-                  <div className="text-xs text-muted-foreground">Billing: Monthly recurring</div>
-                </div>
-                <div className="text-lg font-bold text-primary">
-                  {formatCurrency(selectedCustomer.mrr)}/mo
-                </div>
-              </div>
-            </Card>
-
-            {/* Live API Key Management */}
-            <Card className="p-4 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5 text-warning" /> Live API Key
-                </span>
-                <button
-                  onClick={() => handleRegenerateKey(selectedCustomer.id)}
-                  className="text-[11px] font-mono text-primary hover:underline"
-                >
-                  Regenerate
-                </button>
-              </div>
-              <div className="p-2 rounded bg-black/40 border border-border font-mono text-xs text-zinc-300 break-all select-all">
-                {selectedCustomer.apiKey}
-              </div>
-            </Card>
-
-            {/* Quota & Seat Consumption */}
-            <Card className="p-4 space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Resource Utilization
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs font-mono">
-                  <span>Seats Assigned</span>
-                  <span>{selectedCustomer.seatsUsed} / {selectedCustomer.seatsTotal}</span>
-                </div>
-                <Progress value={(selectedCustomer.seatsUsed / selectedCustomer.seatsTotal) * 100} size="sm" />
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs font-mono">
-                  <span>Monthly Reviews</span>
-                  <span>{selectedCustomer.monthlyReviews} / {selectedCustomer.quotaLimit}</span>
-                </div>
-                <Progress value={(selectedCustomer.monthlyReviews / selectedCustomer.quotaLimit) * 100} size="sm" />
-              </div>
-            </Card>
-
-            {/* Metadata Footer */}
-            <div className="text-[11px] text-muted-foreground font-mono space-y-1 pt-2 border-t border-border/40">
-              <div>Tenant Created: {formatDateTime(selectedCustomer.joinedAt)}</div>
-              <div>Primary Domain: {selectedCustomer.domain}</div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

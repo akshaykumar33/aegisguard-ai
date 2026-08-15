@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Play, Copy, Check, Terminal as TerminalIcon, FileJson, ListFilter, RotateCcw } from 'lucide-react';
+import { Play, Copy, Check, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -10,7 +10,7 @@ export interface CommandPreset {
   command: string;
   description: string;
   output: string[];
-  jsonPayload?: any;
+  jsonPayload?: Record<string, unknown>;
 }
 
 const DEFAULT_PRESETS: CommandPreset[] = [
@@ -111,13 +111,32 @@ export function Terminal() {
   const [selectedPreset, setSelectedPreset] = useState<CommandPreset>(DEFAULT_PRESETS[0]);
   const [activeTab, setActiveTab] = useState<'cli' | 'json' | 'logs'>('cli');
   const [isRunning, setIsRunning] = useState(false);
-  const [displayedLines, setDisplayedLines] = useState<string[]>(DEFAULT_PRESETS[0].output);
   const [copied, setCopied] = useState(false);
+  const [displayedLines, setDisplayedLines] = useState<string[]>(DEFAULT_PRESETS[0].output);
+  const [logTimestamps, setLogTimestamps] = useState<string[]>(() => {
+    const now = new Date();
+    return [
+      now.toISOString(),
+      new Date(now.getTime() + 12).toISOString(),
+      new Date(now.getTime() + 45).toISOString(),
+      new Date(now.getTime() + 98).toISOString(),
+      new Date(now.getTime() + 1420).toISOString()
+    ];
+  });
 
   const runCommand = (preset: CommandPreset) => {
     setSelectedPreset(preset);
     setIsRunning(true);
     setDisplayedLines([]);
+
+    const now = new Date();
+    setLogTimestamps([
+      now.toISOString(),
+      new Date(now.getTime() + 12).toISOString(),
+      new Date(now.getTime() + 45).toISOString(),
+      new Date(now.getTime() + 98).toISOString(),
+      new Date(now.getTime() + 1420).toISOString()
+    ]);
 
     preset.output.forEach((line, index) => {
       setTimeout(() => {
@@ -132,9 +151,15 @@ export function Terminal() {
 
   const handleCopyCommand = async () => {
     try {
-      await navigator.clipboard.writeText(selectedPreset.command);
+      const contentToCopy =
+        activeTab === 'json'
+          ? JSON.stringify(selectedPreset.jsonPayload || { command: selectedPreset.command }, null, 2)
+          : activeTab === 'logs'
+          ? logTimestamps.map((ts, i) => `[${i === 3 ? 'DEBUG' : 'INFO'}] ${ts} - Step ${i + 1}`).join('\n')
+          : selectedPreset.command;
+      await navigator.clipboard.writeText(contentToCopy);
       setCopied(true);
-      toast.success('Copied CLI command');
+      toast.success(activeTab === 'json' ? 'Copied JSON payload' : activeTab === 'logs' ? 'Copied log stream' : 'Copied CLI command');
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // fallback
@@ -142,9 +167,9 @@ export function Terminal() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Preset pills */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {DEFAULT_PRESETS.map((preset) => {
           const isSelected = selectedPreset.name === preset.name;
           return (
@@ -152,20 +177,22 @@ export function Terminal() {
               key={preset.name}
               onClick={() => runCommand(preset)}
               className={cn(
-                'p-3 rounded-lg border text-left transition-colors flex flex-col justify-between gap-1.5',
+                'p-5 rounded-lg border text-left transition-all flex flex-col justify-between gap-3 cursor-pointer shadow-xs',
                 isSelected
-                  ? 'border-primary/50 bg-primary/5'
+                  ? 'border-border-focus bg-secondary text-foreground ring-1 ring-ring/30'
                   : 'border-border bg-card hover:bg-card-hover'
               )}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground">{preset.name}</span>
-                <Play className={cn('w-3 h-3', isSelected ? 'text-primary fill-primary' : 'text-muted-foreground')} />
+                <span className="text-[14px] font-semibold text-foreground">{preset.name}</span>
+                <div className={cn('p-1.5 rounded-md', isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                </div>
               </div>
-              <div className="text-[11px] text-muted-foreground line-clamp-1">
+              <div className="text-[12px] text-muted-foreground line-clamp-1">
                 {preset.description}
               </div>
-              <code className="text-[10px] font-mono text-primary truncate bg-muted/50 px-1.5 py-0.5 rounded border border-border/40">
+              <code className="text-[11px] font-mono text-muted-foreground truncate bg-muted/70 px-2.5 py-1 rounded-md border border-border">
                 {preset.command}
               </code>
             </button>
@@ -174,92 +201,94 @@ export function Terminal() {
       </div>
 
       {/* Terminal window */}
-      <div className="terminal-window">
+      <div className="terminal-window rounded-xl border border-border bg-card shadow-xs overflow-hidden">
         {/* Header bar */}
-        <div className="flex items-center justify-between px-3.5 py-2.5 bg-muted/40 border-b border-border flex-wrap gap-2">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 bg-muted/40 border-b border-border gap-3">
+          <div className="flex items-center justify-between sm:justify-start gap-3">
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-destructive/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-warning/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-success/80" />
             </div>
-            <span className="font-mono text-xs text-muted-foreground ml-2">
-              codeguard-cli v1.4.0
+            <span className="font-mono text-xs text-muted-foreground ml-2 font-medium">
+              codeguard-cli v1.4.0 <span className="text-muted-foreground/60 font-normal">• enterprise</span>
             </span>
           </div>
 
-          <div className="flex items-center bg-card rounded-md p-0.5 border border-border/80 text-[11px] font-mono">
-            <button
-              onClick={() => setActiveTab('cli')}
-              className={cn(
-                'px-2 py-0.5 rounded transition-colors',
-                activeTab === 'cli' ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              CLI
-            </button>
+          <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap">
+            <div className="flex items-center bg-muted/80 rounded-lg p-0.5 border border-border text-[11px] font-mono shadow-xs">
+              <button
+                onClick={() => setActiveTab('cli')}
+                className={cn(
+                  'px-3 py-1 rounded-md transition-all cursor-pointer font-medium',
+                  activeTab === 'cli' ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                CLI
+              </button>
 
-            <button
-              onClick={() => setActiveTab('json')}
-              className={cn(
-                'px-2 py-0.5 rounded transition-colors',
-                activeTab === 'json' ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              JSON
-            </button>
+              <button
+                onClick={() => setActiveTab('json')}
+                className={cn(
+                  'px-3 py-1 rounded-md transition-all cursor-pointer font-medium',
+                  activeTab === 'json' ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                JSON
+              </button>
 
-            <button
-              onClick={() => setActiveTab('logs')}
-              className={cn(
-                'px-2 py-0.5 rounded transition-colors',
-                activeTab === 'logs' ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Logs
-            </button>
-          </div>
+              <button
+                onClick={() => setActiveTab('logs')}
+                className={cn(
+                  'px-3 py-1 rounded-md transition-all cursor-pointer font-medium',
+                  activeTab === 'logs' ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Logs
+              </button>
+            </div>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => runCommand(selectedPreset)}
-              disabled={isRunning}
-              className="flex items-center gap-1 px-2 py-1 rounded border border-border hover:bg-muted text-xs font-mono text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            >
-              <RotateCcw className={cn('w-3 h-3', isRunning && 'animate-spin')} />
-              <span>Re-run</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => runCommand(selectedPreset)}
+                disabled={isRunning}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border hover:bg-muted text-xs font-mono text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <RotateCcw className={cn('w-3 h-3', isRunning && 'animate-spin')} />
+                <span>Re-run</span>
+              </button>
 
-            <button
-              onClick={handleCopyCommand}
-              className="flex items-center gap-1 px-2 py-1 rounded border border-border hover:bg-muted text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
-            </button>
+              <button
+                onClick={handleCopyCommand}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border hover:bg-muted text-xs font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Command banner */}
-        <div className="px-3.5 py-1.5 bg-muted/20 border-b border-border/40 font-mono text-xs text-muted-foreground flex items-center gap-2">
-          <span className="text-primary font-bold">$</span>
+        <div className="px-4 py-2 bg-muted/20 border-b border-border font-mono text-xs text-muted-foreground flex items-center gap-2 overflow-x-auto break-all">
+          <span className="text-primary font-bold shrink-0">$</span>
           <span className="text-foreground">{selectedPreset.command}</span>
         </div>
 
         {/* Terminal output */}
-        <div className="p-3.5 min-h-[220px] max-h-[360px] overflow-y-auto font-mono text-xs leading-relaxed bg-black/40 text-zinc-300">
+        <div className="p-5 min-h-[260px] max-h-[420px] overflow-y-auto overflow-x-auto font-mono text-[13px] leading-[1.8] bg-background text-foreground">
           {activeTab === 'cli' && (
             <div className="space-y-1">
               {displayedLines.map((line, idx) => {
-                let lineClass = 'text-zinc-300';
+                let lineClass = 'text-foreground/90';
                 if (line.includes('PASSED') || line.includes('APPROVED') || line.includes('✓') || line.includes('Clean')) {
-                  lineClass = 'text-emerald-400 font-medium';
+                  lineClass = 'text-success font-medium';
                 } else if (line.includes('BLOCKED') || line.includes('Critical') || line.includes('Leak')) {
-                  lineClass = 'text-rose-400 font-medium';
+                  lineClass = 'text-destructive font-medium';
                 } else if (line.includes('Stage') || line.includes('CodeGuard') || line.includes('⚡')) {
                   lineClass = 'text-primary font-semibold';
                 } else if (line.includes('→')) {
-                  lineClass = 'text-cyan-300';
+                  lineClass = 'text-accent';
                 }
 
                 return (
@@ -278,18 +307,18 @@ export function Terminal() {
           )}
 
           {activeTab === 'json' && (
-            <pre className="text-zinc-300 whitespace-pre-wrap font-mono text-[11px]">
+            <pre className="text-foreground/90 whitespace-pre-wrap break-all font-mono text-[12px]">
               {JSON.stringify(selectedPreset.jsonPayload || { command: selectedPreset.command }, null, 2)}
             </pre>
           )}
 
           {activeTab === 'logs' && (
-            <div className="space-y-1 text-zinc-400 text-[11px] font-mono">
-              <div>[INFO] {new Date().toISOString()} - Initializing worker daemon pool</div>
-              <div>[INFO] {new Date().toISOString()} - Fetching repository AST commit tree sha=9a8f21bc</div>
-              <div>[INFO] {new Date().toISOString()} - Connected to Google Gemini 3.7 Flash AI Reviewer</div>
-              <div>[DEBUG] {new Date().toISOString()} - Zero-trust token entropy evaluation: 0 leaks</div>
-              <div>[INFO] {new Date().toISOString()} - Policy rules verified. Returning HTTP 200 OK</div>
+            <div className="space-y-1.5 text-muted-foreground text-[12px] font-mono">
+              <div>[INFO] {logTimestamps[0]} - Initializing worker daemon pool</div>
+              <div>[INFO] {logTimestamps[1]} - Fetching repository AST commit tree sha=9a8f21bc</div>
+              <div>[INFO] {logTimestamps[2]} - Connected to Google Gemini 3.7 Flash AI Reviewer</div>
+              <div>[DEBUG] {logTimestamps[3]} - Zero-trust token entropy evaluation: 0 leaks</div>
+              <div>[INFO] {logTimestamps[4]} - Policy rules verified. Returning HTTP 200 OK</div>
             </div>
           )}
         </div>

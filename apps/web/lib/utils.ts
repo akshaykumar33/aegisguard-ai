@@ -32,6 +32,20 @@ export function formatDateTime(dateString: string | Date): string {
   }).format(new Date(dateString));
 }
 
+/**
+ * Turn an entitlement feature code into a readable label.
+ * MONTHLY_AI_REVIEWS -> "Monthly AI Reviews"
+ */
+export function formatFeatureCode(code: string): string {
+  const acronyms = new Set(['AI', 'PR', 'API', 'GB', 'SSO', 'RBAC']);
+  return code
+    .split('_')
+    .map((word) =>
+      acronyms.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )
+    .join(' ');
+}
+
 export function truncate(str: string, length: number): string {
   if (!str || str.length <= length) return str;
   return str.slice(0, length) + '...';

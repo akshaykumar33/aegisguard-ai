@@ -33,9 +33,14 @@ export async function runMigrations() {
         email VARCHAR(255) NOT NULL UNIQUE,
         name VARCHAR(255) NOT NULL,
         avatar_url TEXT,
+        password_hash TEXT,
+        is_platform_admin BOOLEAN NOT NULL DEFAULT false,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_platform_admin BOOLEAN NOT NULL DEFAULT false;
 
       CREATE TABLE IF NOT EXISTS teams (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -161,6 +166,12 @@ export async function runMigrations() {
       ALTER TABLE pull_requests ADD COLUMN IF NOT EXISTS opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
       ALTER TABLE pull_requests ADD COLUMN IF NOT EXISTS merged_at TIMESTAMPTZ;
       ALTER TABLE pull_requests ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
+      DO $$ BEGIN
+        ALTER TABLE pull_requests ALTER COLUMN provider_pr_id DROP NOT NULL;
+      EXCEPTION WHEN OTHERS THEN NULL; END $$;
+      DO $$ BEGIN
+        ALTER TABLE pull_requests ALTER COLUMN pr_number DROP NOT NULL;
+      EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
       CREATE TABLE IF NOT EXISTS review_runs (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -191,8 +202,13 @@ export async function runMigrations() {
         started_at TIMESTAMPTZ,
         completed_at TIMESTAMPTZ,
         duration_ms INTEGER,
-        error TEXT
+        error TEXT,
+        metadata JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE review_stages ADD COLUMN IF NOT EXISTS metadata JSONB;
+      ALTER TABLE review_stages ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
       CREATE TABLE IF NOT EXISTS review_findings (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -277,6 +293,14 @@ export async function runMigrations() {
         ip_address VARCHAR(45),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_id VARCHAR(255);
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_type VARCHAR(50) DEFAULT 'USER';
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS action VARCHAR(100);
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS resource_type VARCHAR(100);
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS resource_id VARCHAR(255);
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB;
+      ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45);
     `);
 
     // 8. Subscriber Management & Customer Portal Platform

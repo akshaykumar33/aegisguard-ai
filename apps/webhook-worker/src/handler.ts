@@ -5,6 +5,8 @@ import { logger } from '@codeguard/logger';
 import { db, repositories, pullRequests, reviewRuns, auditLogs } from '@codeguard/database';
 import { eq } from 'drizzle-orm';
 import { enqueueReviewJob, enqueueWebhookJob } from '@codeguard/queue';
+import { canRunCloudReview } from '@codeguard/policy-engine';
+import { githubProvider } from '@codeguard/github';
 
 export async function handleGitHubWebhook(request: FastifyRequest, reply: FastifyReply) {
   const signature = request.headers['x-hub-signature-256'] as string | undefined;
@@ -66,6 +68,42 @@ export async function handleGitHubWebhook(request: FastifyRequest, reply: Fastif
       }
 
       if (action === 'opened' || action === 'synchronize' || action === 'reopened') {
+        // Entitlement gate. Runs before any work is queued so an out-of-plan or
+        // out-of-quota organization cannot consume paid AI capacity.
+        const admission = await canRunCloudReview(repo.organizationId);
+        if (!admission.allowed) {
+          logger.info(
+            { repo: repo.fullName, prNumber, reason: admission.reason, featureCode: admission.featureCode },
+            'Cloud review not admitted for this organization'
+          );
+
+          // Tell the developer on the PR instead of failing silently.
+          const effectiveInstallationId = repo.installationId || installationId;
+          if (effectiveInstallationId) {
+            const [owner, repoName] = repo.fullName.split('/');
+            if (owner && repoName) {
+              try {
+                await githubProvider.createCheckRun(effectiveInstallationId, owner, repoName, {
+                  name: 'CodeGuard Security & Review',
+                  headSha,
+                  status: 'completed',
+                  conclusion: 'neutral',
+                  title: 'Review skipped',
+                  summary: admission.reason ?? 'Automated review is not available for this organization.'
+                });
+              } catch (err) {
+                logger.warn({ err }, 'Could not publish skipped-review check run');
+              }
+            }
+          }
+
+          return reply.status(202).send({
+            status: 'skipped',
+            reason: admission.reason,
+            featureCode: admission.featureCode
+          });
+        }
+
         // Upsert PR record in database
         const [upsertedPr] = await db
           .insert(pullRequests)
